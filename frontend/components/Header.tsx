@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
 const navItems = [
     { label: 'Features', href: '#features', id: 'features' },
-    { label: 'Performance', href: '#performance', id: 'performance' },
+    { label: 'How It Works', href: '#performance', id: 'performance' },
     { label: 'Roles', href: '#roles', id: 'roles' },
+    { label: 'About', href: '#about', id: 'about' },
 ];
 
 export default function Header() {
@@ -56,15 +56,15 @@ export default function Header() {
 
     const headerClassName = useMemo(
         () =>
-            `sticky top-0 z-50 w-full bg-white transition-all duration-300 ${isScrolled ? 'shadow-sm' : ''
+            `sticky top-0 z-50 w-full bg-[#1c2554] transition-all duration-300 ${isScrolled ? 'shadow-lg' : ''
             }`,
         [isScrolled],
     );
 
     return (
         <header className={headerClassName}>
-            <div className="border-b border-gray-100">
-                <div className="relative mx-auto flex max-w-7xl items-center justify-between px-6 py-3 lg:px-10">
+            <div className="border-b border-white/10">
+                <div className="relative mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
 
                     {/* Logo */}
                     <button
@@ -73,23 +73,18 @@ export default function Header() {
                         className="flex items-center gap-3 text-left"
                         aria-label="Scroll to top"
                     >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow-md">
-                            <Image
-                                src="/logo.png"
-                                alt="UoK MailAI logo"
-                                height={28}
-                                width={28}
-                                className="block"
-                            />
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="5" y="9" width="14" height="10" rx="2" />
+                                <path d="M9 9V7a3 3 0 0 1 6 0v2" />
+                                <circle cx="9.5" cy="14" r="1" fill="#7dd3fc" />
+                                <circle cx="14.5" cy="14" r="1" fill="#7dd3fc" />
+                                <path d="M3 13h2M19 13h2" />
+                            </svg>
                         </div>
-                        <div className="flex flex-col justify-center">
-                            <span className="text-[1rem] font-bold leading-tight tracking-tight text-gray-900">
-                                UoK MailAI
-                            </span>
-                            <span className="text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-gray-400">
-                                Auto-Reply System
-                            </span>
-                        </div>
+                        <span className="text-lg font-bold leading-tight tracking-tight text-white">
+                            AI<span className="text-sky-400">Guidance</span>
+                        </span>
                     </button>
 
                     {/* Desktop Nav */}
@@ -105,14 +100,11 @@ export default function Header() {
                                         handleNavClick(id);
                                     }}
                                     className={`relative rounded-md px-4 py-2 text-sm font-medium transition-colors duration-150 ${isActive
-                                            ? 'text-gray-900'
-                                            : 'text-gray-500 hover:text-gray-900'
+                                        ? 'text-white'
+                                        : 'text-slate-300 hover:text-white'
                                         }`}
                                 >
                                     {label}
-                                    {isActive && (
-                                        <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-violet-600" />
-                                    )}
                                 </a>
                             );
                         })}
@@ -122,13 +114,13 @@ export default function Header() {
                     <div className="hidden items-center gap-3 md:flex">
                         <Link
                             href="/auth"
-                            className="rounded-lg border border-violet-600 px-5 py-2 text-sm font-semibold text-violet-600 transition-all duration-150 hover:bg-violet-50"
+                            className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-white/20"
                         >
                             Sign In
                         </Link>
                         <Link
                             href="/auth/signup"
-                            className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-violet-700 hover:-translate-y-0.5"
+                            className="rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:opacity-90 hover:-translate-y-0.5"
                         >
                             Get Started
                         </Link>
@@ -136,7 +128,7 @@ export default function Header() {
 
                     {/* Mobile Hamburger */}
                     <button
-                        className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-2 text-gray-500 transition-colors hover:text-gray-800 md:hidden"
+                        className="inline-flex rounded-lg border border-white/20 bg-white/5 p-2 text-white transition-colors hover:bg-white/10 md:hidden"
                         aria-label="Toggle menu"
                         onClick={() => setMenuOpen((open) => !open)}
                     >
@@ -149,7 +141,7 @@ export default function Header() {
 
             {/* Mobile Menu */}
             {menuOpen && (
-                <div className="border-b border-gray-100 bg-white px-6 pb-5 pt-3 shadow-lg md:hidden">
+                <div className="border-b border-white/10 bg-[#1c2554] px-6 pb-5 pt-3 shadow-lg md:hidden">
                     <div className="flex flex-col gap-1">
                         {navItems.map(({ label, href, id }) => {
                             const isActive = activeSection === id;
@@ -162,26 +154,26 @@ export default function Header() {
                                         handleNavClick(id);
                                     }}
                                     className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${isActive
-                                            ? 'bg-violet-50 text-violet-700'
-                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                        ? 'bg-white/10 text-white'
+                                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
                                         }`}
                                 >
                                     {label}
                                 </a>
                             );
                         })}
-                        <div className="mt-3 grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                        <div className="mt-3 grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
                             <Link
                                 href="/auth"
                                 onClick={() => setMenuOpen(false)}
-                                className="rounded-lg border border-violet-600 px-4 py-2.5 text-center text-sm font-semibold text-violet-600 transition-colors hover:bg-violet-50"
+                                className="rounded-full bg-white/10 px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-white/20"
                             >
                                 Sign In
                             </Link>
                             <Link
                                 href="/auth/signup"
                                 onClick={() => setMenuOpen(false)}
-                                className="rounded-lg bg-violet-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-violet-700"
+                                className="rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:opacity-90"
                             >
                                 Get Started
                             </Link>
