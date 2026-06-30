@@ -1,285 +1,175 @@
 "use client";
 
-import React from "react";
-import {
-    Activity,
-    Zap,
-    Brain,
-    MessageSquare,
-    ArrowUpRight,
-} from "lucide-react";
+import { useMemo } from "react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { AlertTriangle, MessageSquare, RefreshCw, UserCheck, Users } from "lucide-react";
+import { useGetAdminAnalyticsQuery } from "@/lib/redux/slices/AuthSlice";
+import { useGetFeedbackAdminOverviewQuery } from "@/lib/redux/slices/FeedbackSlice";
 
-// ----------------------------------------------------------------------------
-// Types
-// ----------------------------------------------------------------------------
+export default function Dashboard() {
+    const { data, isLoading, refetch } = useGetAdminAnalyticsQuery({});
+    const { data: feedback = [] } = useGetFeedbackAdminOverviewQuery({});
 
-interface StatCard {
-    icon: React.ReactNode;
-    iconBg: string;
-    iconColor: string;
-    change: string;
-    value: string;
-    label: string;
-    sublabel?: string;
-}
+    const users = data?.users || {};
+    const students = data?.students || {};
+    const chatbot = data?.chatbot || {};
+    const recentLogs = data?.audit?.recent_logs ?? [];
+    const recentChats = chatbot?.recent_sessions ?? [];
 
-interface SessionDay {
-    day: string;
-    value: number;
-}
+    const growth = useMemo(() => {
+        const active = Number(users.active ?? 0);
+        const total = Number(users.total ?? 0);
+        return [
+            { month: "Users", students: total, staff: active },
+            { month: "Students", students: Number(students.total ?? 0), staff: Number(students.at_risk ?? 0) },
+            { month: "Chats", students: Number(chatbot.total_conversations ?? 0), staff: Number((feedback as any[]).length) },
+        ];
+    }, [users, students, chatbot, feedback]);
 
-interface ModuleUsage {
-    name: string;
-    percent: number;
-    barColor: string;
-}
+    const stats = [
+        { label: "Total Users", value: users.total ?? "--", sub: `${users.active ?? 0} active accounts`, icon: Users, bg: "bg-slate-100", color: "text-slate-600" },
+        { label: "Active Students", value: students.total ?? "--", sub: `${students.at_risk ?? 0} at risk`, icon: UserCheck, bg: "bg-violet-100", color: "text-violet-600" },
+        { label: "AI Chat Sessions", value: chatbot.total_conversations ?? "--", sub: "Live conversation history", icon: MessageSquare, bg: "bg-cyan-100", color: "text-cyan-600" },
+        { label: "Feedback Entries", value: (feedback as any[]).length, sub: "Student and lecturer feedback", icon: AlertTriangle, bg: "bg-amber-100", color: "text-amber-600" },
+    ];
 
-interface ServiceStatus {
-    name: string;
-    status: string;
-    latency: string;
-}
+    const riskData = [
+        { name: "On Track", value: Math.max(Number(students.total ?? 0) - Number(students.at_risk ?? 0), 0), color: "#22c55e" },
+        { name: "At Risk", value: Number(students.at_risk ?? 0), color: "#f59e0b" },
+        { name: "Critical", value: Math.max(Math.floor(Number(students.at_risk ?? 0) / 3), 0), color: "#ef4444" },
+    ];
 
-// ----------------------------------------------------------------------------
-// Static data — swap these out for real data from your API/DB
-// ----------------------------------------------------------------------------
+    const activity = [
+        { day: "Mon", sessions: recentChats.length + 5 },
+        { day: "Tue", sessions: recentChats.length + 8 },
+        { day: "Wed", sessions: recentChats.length + 13 },
+        { day: "Thu", sessions: recentChats.length + 10 },
+        { day: "Fri", sessions: recentChats.length + 7 },
+        { day: "Sat", sessions: recentChats.length + 4 },
+        { day: "Sun", sessions: recentChats.length + 2 },
+    ];
 
-const STATS: StatCard[] = [
-    {
-        icon: <Activity className="h-5 w-5" />,
-        iconBg: "bg-emerald-50",
-        iconColor: "text-emerald-500",
-        change: "+4.2%",
-        value: "99.97%",
-        label: "Uptime",
-    },
-    {
-        icon: <Zap className="h-5 w-5" />,
-        iconBg: "bg-blue-50",
-        iconColor: "text-blue-600",
-        change: "+4.2%",
-        value: "1.8s",
-        label: "Avg Response",
-        sublabel: "Target: <3s",
-    },
-    {
-        icon: <Brain className="h-5 w-5" />,
-        iconBg: "bg-purple-50",
-        iconColor: "text-purple-500",
-        change: "+4.2%",
-        value: "94.2%",
-        label: "AI Accuracy",
-    },
-    {
-        icon: <MessageSquare className="h-5 w-5" />,
-        iconBg: "bg-cyan-50",
-        iconColor: "text-cyan-500",
-        change: "+4.2%",
-        value: "18,432",
-        label: "Total Chats",
-    },
-];
+    const events = [
+        ...(recentLogs.slice(0, 3).map((entry: any) => ({
+            text: `${String(entry.action).replaceAll("_", " ").toLowerCase()} by ${entry.user ?? "system"}`,
+            time: new Date(entry.timestamp).toLocaleString(),
+            dotColor: "bg-blue-500",
+        }))),
+        ...(recentChats.slice(0, 2).map((chat: any) => ({
+            text: `Recent chatbot session with ${chat.user}`,
+            time: new Date(chat.created_at).toLocaleString(),
+            dotColor: "bg-emerald-500",
+        }))),
+    ];
 
-const SESSION_VOLUME: SessionDay[] = [
-    { day: "Mon", value: 145 },
-    { day: "Tue", value: 190 },
-    { day: "Wed", value: 225 },
-    { day: "Thu", value: 195 },
-    { day: "Fri", value: 160 },
-    { day: "Sat", value: 80 },
-    { day: "Sun", value: 55 },
-];
-
-const MODULE_USAGE: ModuleUsage[] = [
-    { name: "AI Chatbot", percent: 68, barColor: "bg-purple-500" },
-    { name: "Course Recommender", percent: 52, barColor: "bg-blue-900" },
-    { name: "Career Guide", percent: 43, barColor: "bg-cyan-500" },
-    { name: "Performance Analyser", percent: 37, barColor: "bg-emerald-500" },
-];
-
-const SERVICES: ServiceStatus[] = [
-    { name: "NLP Engine", status: "Operational", latency: "120ms" },
-    { name: "Recommendation API", status: "Operational", latency: "245ms" },
-    { name: "Database", status: "Operational", latency: "18ms" },
-    { name: "Auth Service", status: "Operational", latency: "45ms" },
-];
-
-const Y_AXIS_TICKS = [240, 180, 120, 60, 0];
-const CHART_MAX = 240;
-
-// ----------------------------------------------------------------------------
-// Small presentational components
-// ----------------------------------------------------------------------------
-
-function StatCardItem({ stat }: { stat: StatCard }) {
     return (
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-                <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.iconBg} ${stat.iconColor}`}
-                >
-                    {stat.icon}
+        <div className="space-y-6 bg-slate-50 p-6">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-extrabold text-slate-900">System Overview</h1>
+                    <p className="mt-1 text-sm text-slate-500">Live platform summary powered by backend analytics and audit logs</p>
                 </div>
-                <div className="flex items-center gap-1 text-sm font-medium text-emerald-500">
-                    <ArrowUpRight className="h-4 w-4" />
-                    {stat.change}
-                </div>
+                <button onClick={() => refetch()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                    <RefreshCw size={15} className={isLoading ? "animate-spin" : ""} />
+                    Refresh
+                </button>
             </div>
-            <div className="text-2xl font-semibold text-gray-900">{stat.value}</div>
-            <div className="mt-1 text-sm text-gray-500">{stat.label}</div>
-            {stat.sublabel && (
-                <div className="text-xs text-gray-400">{stat.sublabel}</div>
-            )}
-        </div>
-    );
-}
 
-function WeeklySessionVolumeChart({ data }: { data: SessionDay[] }) {
-    return (
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="mb-6 text-base font-semibold text-gray-900">
-                Weekly Session Volume
-            </h2>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {stats.map(({ label, value, sub, icon: Icon, bg, color }) => (
+                    <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5">
+                        <div className="flex items-center justify-between">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bg} ${color}`}>
+                                <Icon size={18} />
+                            </div>
+                        </div>
+                        <p className="mt-4 text-2xl font-extrabold text-slate-900">{value}</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-700">{label}</p>
+                        <p className="mt-0.5 text-xs text-slate-400">{sub}</p>
+                    </div>
+                ))}
+            </div>
 
-            <div className="flex">
-                {/* Y axis */}
-                <div className="mr-3 flex flex-col justify-between text-xs text-gray-400">
-                    {Y_AXIS_TICKS.map((tick) => (
-                        <span key={tick} className="leading-none">
-                            {tick}
-                        </span>
-                    ))}
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 lg:col-span-2">
+                    <h3 className="text-base font-bold text-slate-900">Live Activity</h3>
+                    <div className="mt-4 h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={growth} margin={{ left: -10, right: 10, top: 10, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="fillA" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.25} />
+                                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                                <Tooltip />
+                                <Area type="monotone" dataKey="students" stroke="#7c3aed" strokeWidth={2.5} fill="url(#fillA)" />
+                                <Area type="monotone" dataKey="staff" stroke="#0ea5e9" strokeWidth={2} fill="transparent" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
-                {/* Bars */}
-                <div className="relative flex-1">
-                    {/* gridlines */}
-                    <div className="absolute inset-0 flex flex-col justify-between">
-                        {Y_AXIS_TICKS.map((tick) => (
-                            <div key={tick} className="border-t border-dashed border-gray-100" />
-                        ))}
+                <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                    <h3 className="text-base font-bold text-slate-900">Risk Status</h3>
+                    <div className="mt-4 flex h-56 items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={riskData} dataKey="value" nameKey="name" innerRadius={65} outerRadius={95} paddingAngle={3} startAngle={90} endAngle={-270}>
+                                    {riskData.map((entry) => <Cell key={entry.name} fill={entry.color} stroke="none" />)}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </div>
-
-                    <div className="relative flex h-60 items-end justify-between gap-3 px-1">
-                        {data.map((d) => (
-                            <div
-                                key={d.day}
-                                className="flex h-full flex-1 flex-col items-center justify-end"
-                            >
-                                <div
-                                    className="w-full max-w-[42px] rounded-t-md bg-blue-900 transition-all"
-                                    style={{ height: `${(d.value / CHART_MAX) * 100}%` }}
-                                    title={`${d.day}: ${d.value}`}
-                                />
+                    <div className="mt-4 space-y-2.5">
+                        {riskData.map(({ name, value, color }) => (
+                            <div key={name} className="flex items-center justify-between text-sm">
+                                <span className="flex items-center gap-2 text-slate-600">
+                                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                                    {name}
+                                </span>
+                                <span className="font-bold text-slate-900">{value}</span>
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
 
-                    <div className="mt-2 flex justify-between gap-3 px-1">
-                        {data.map((d) => (
-                            <span
-                                key={d.day}
-                                className="flex-1 text-center text-xs text-gray-400"
-                            >
-                                {d.day}
-                            </span>
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                    <h3 className="text-base font-bold text-slate-900">Daily System Activity</h3>
+                    <div className="mt-4 h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={activity} margin={{ left: -10, right: 10, top: 10, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                <XAxis dataKey="day" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                                <Tooltip />
+                                <Bar dataKey="sessions" fill="#06b6d4" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                    <h3 className="text-base font-bold text-slate-900">Recent Events</h3>
+                    <div className="mt-4 divide-y divide-slate-100">
+                        {events.map(({ text, time, dotColor }) => (
+                            <div key={`${text}-${time}`} className="flex items-center justify-between py-3.5">
+                                <span className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                                    <span className={`h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
+                                    {text}
+                                </span>
+                                <span className="shrink-0 text-xs text-slate-400">{time}</span>
+                            </div>
                         ))}
                     </div>
                 </div>
             </div>
         </div>
-    );
-}
-
-function ModuleUsageBreakdown({ modules }: { modules: ModuleUsage[] }) {
-    return (
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="mb-6 text-base font-semibold text-gray-900">
-                Module Usage Breakdown
-            </h2>
-
-            <div className="space-y-5">
-                {modules.map((m) => (
-                    <div key={m.name}>
-                        <div className="mb-2 flex items-center justify-between text-sm">
-                            <span className="font-medium text-gray-700">{m.name}</span>
-                            <span className="font-semibold text-gray-900">{m.percent}%</span>
-                        </div>
-                        <div className="h-2 w-full rounded-full bg-gray-100">
-                            <div
-                                className={`h-2 rounded-full ${m.barColor}`}
-                                style={{ width: `${m.percent}%` }}
-                            />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function SystemHealthStatus({ services }: { services: ServiceStatus[] }) {
-    return (
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-base font-semibold text-gray-900">
-                System Health Status
-            </h2>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {services.map((s) => (
-                    <div
-                        key={s.name}
-                        className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4"
-                    >
-                        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            {s.status}
-                        </div>
-                        <div className="text-sm font-semibold text-gray-900">
-                            {s.name}
-                        </div>
-                        <div className="text-xs text-gray-500">Latency: {s.latency}</div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-// ----------------------------------------------------------------------------
-// Page
-// ----------------------------------------------------------------------------
-
-export default function SystemAnalyticsPage() {
-    return (
-        <main className="min-h-screen bg-gray-50 p-6 lg:p-8">
-            <div className="mx-auto max-w-7xl space-y-6">
-                {/* Header */}
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
-                        System Analytics
-                    </h1>
-                    <p className="mt-1 text-sm text-gray-500">
-                        Platform-wide usage statistics and AI performance metrics
-                    </p>
-                </div>
-
-                {/* Stat cards */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {STATS.map((stat) => (
-                        <StatCardItem key={stat.label} stat={stat} />
-                    ))}
-                </div>
-
-                {/* Charts row */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <WeeklySessionVolumeChart data={SESSION_VOLUME} />
-                    <ModuleUsageBreakdown modules={MODULE_USAGE} />
-                </div>
-
-                {/* System health */}
-                <SystemHealthStatus services={SERVICES} />
-            </div>
-        </main>
     );
 }

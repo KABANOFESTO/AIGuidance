@@ -15,3 +15,9 @@ class AuditLogListView(generics.ListAPIView):
     filterset_fields = ["action", "user", "target_user"]
     ordering_fields = ["timestamp", "action"]
     ordering = ["-timestamp"]
+
+
+class AuditLogDetailView(generics.RetrieveAPIView):
+    queryset = AuditLog.objects.all().select_related("user", "target_user")
+    serializer_class = AuditLogSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]

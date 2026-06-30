@@ -6,19 +6,15 @@ const auditLogApi = apiSlice.injectEndpoints({
             query: () => ({
                 url: "audit-logs/",
                 method: "GET",
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access')}`,
-                },
             }),
+            providesTags: ["AuditLog"],
         }),
         getAuditLogById: builder.query({
             query: (id) => ({
                 url: `audit-logs/${id}/`,
                 method: "GET",
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access')}`,
-                },
             }),
+            providesTags: ["AuditLog"],
         }),
     }),
 });

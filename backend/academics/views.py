@@ -1,13 +1,17 @@
 from django.db.models import Avg
+from django.http import FileResponse
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from academics.models import AcademicRecord, AttendanceRecord, Course
+from academics.models import AcademicRecord, AttendanceRecord, Course, CourseMaterial
 from academics.serializers import (
     AcademicRecordSerializer,
     AcademicSummarySerializer,
     AttendanceRecordSerializer,
     CourseSerializer,
+    CourseMaterialSerializer,
 )
 from authapi.permissions import IsAdmin, IsAdminOrLecturer, IsAdminOrStudentOrLecturer
 from students.models import StudentProfile
@@ -23,6 +27,79 @@ class CourseDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrLecturer]
+
+
+class CourseMaterialListCreateView(generics.ListCreateAPIView):
+    queryset = CourseMaterial.objects.select_related("course", "uploaded_by")
+    serializer_class = CourseMaterialSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_permissions(self):
+        if self.request.method in ("POST",):
+            return [permissions.IsAuthenticated(), IsAdminOrLecturer()]
+        return [permissions.IsAuthenticated(), IsAdminOrStudentOrLecturer()]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        course_id = self.request.query_params.get("course_id")
+
+        if self.request.user.role == "Student":
+            queryset = queryset.filter(is_published=True, course__academic_records__student__user=self.request.user).distinct()
+        elif self.request.user.role == "Lecturer":
+            queryset = queryset.filter(uploaded_by=self.request.user)
+
+        if course_id:
+            queryset = queryset.filter(course_id=course_id)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user)
+
+
+class CourseMaterialDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = CourseMaterial.objects.select_related("course", "uploaded_by")
+    serializer_class = CourseMaterialSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_permissions(self):
+        if self.request.method in ("PUT", "PATCH", "DELETE"):
+            return [permissions.IsAuthenticated(), IsAdminOrLecturer()]
+        return [permissions.IsAuthenticated(), IsAdminOrStudentOrLecturer()]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.user.role == "Lecturer":
+            queryset = queryset.filter(uploaded_by=self.request.user)
+        elif self.request.user.role == "Student":
+            queryset = queryset.filter(is_published=True, course__academic_records__student__user=self.request.user).distinct()
+        return queryset
+
+
+class CourseMaterialDownloadView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrStudentOrLecturer]
+
+    def get(self, request, pk):
+        material = get_object_or_404(
+            CourseMaterial.objects.select_related("course", "uploaded_by"),
+            pk=pk,
+        )
+
+        if request.user.role == "Student":
+            allowed = material.is_published and material.course.academic_records.filter(student__user=request.user).exists()
+            if not allowed:
+                return Response({"detail": "You do not have access to this material."}, status=403)
+        elif request.user.role == "Lecturer" and material.uploaded_by_id != request.user.id:
+            return Response({"detail": "You do not have access to this material."}, status=403)
+
+        material.downloads += 1
+        material.save(update_fields=["downloads", "updated_at"])
+
+        file_handle = material.file.open("rb")
+        response = FileResponse(file_handle, as_attachment=True, filename=material.filename)
+        response["X-Download-Count"] = str(material.downloads)
+        return response
 
 
 class AcademicRecordListCreateView(generics.ListCreateAPIView):

@@ -1,7 +1,10 @@
-'use client';
+"use client";
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from "next/navigation";
+import { LogOut, LayoutGrid, UserCircle2 } from "lucide-react";
+import { useCurrentUserQuery, useLogoutMutation } from "@/lib/redux/slices/AuthSlice";
 
 const navItems = [
     { label: 'Features', href: '#features', id: 'features' },
@@ -11,9 +14,13 @@ const navItems = [
 ];
 
 export default function Header() {
+    const router = useRouter();
     const [menuOpen, setMenuOpen] = useState(false);
     const [activeSection, setActiveSection] = useState('features');
     const [isScrolled, setIsScrolled] = useState(false);
+    const hasAccessToken = typeof window !== "undefined" && Boolean(localStorage.getItem("access"));
+    const { data: user } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
+    const [logout] = useLogoutMutation();
 
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 16);
@@ -60,6 +67,28 @@ export default function Header() {
             }`,
         [isScrolled],
     );
+
+    const roleHome =
+        user?.role === "Admin"
+            ? "/admin/dashboard"
+            : user?.role === "Lecturer"
+                ? "/lecturer/dashboard"
+                : "/student/dashboard";
+
+    const profileHome =
+        user?.role === "Admin"
+            ? "/admin/profile"
+            : user?.role === "Lecturer"
+                ? "/lecturer/profile"
+                : "/student/profile";
+
+    const handleLogout = async () => {
+        try {
+            await logout({ refresh: localStorage.getItem("refresh") }).unwrap();
+        } catch {}
+        localStorage.clear();
+        router.push("/auth");
+    };
 
     return (
         <header className={headerClassName}>
@@ -112,18 +141,37 @@ export default function Header() {
 
                     {/* Desktop CTA Buttons */}
                     <div className="hidden items-center gap-3 md:flex">
-                        <Link
-                            href="/auth"
-                            className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-white/20"
-                        >
-                            Sign In
-                        </Link>
-                        <Link
-                            href="/auth/signup"
-                            className="rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:opacity-90 hover:-translate-y-0.5"
-                        >
-                            Get Started
-                        </Link>
+                        {user ? (
+                            <>
+                                <Link href={roleHome} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-white/20">
+                                    <LayoutGrid size={16} />
+                                    Dashboard
+                                </Link>
+                                <Link href={profileHome} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-white/20">
+                                    <UserCircle2 size={16} />
+                                    Profile
+                                </Link>
+                                <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:opacity-90 hover:-translate-y-0.5">
+                                    <LogOut size={16} />
+                                    Logout
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                    <Link
+                                        href="/auth"
+                                        className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-white/20"
+                                    >
+                                        Sign In
+                                </Link>
+                                <Link
+                                    href="/auth/signup"
+                                    className="rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:opacity-90 hover:-translate-y-0.5"
+                                >
+                                    Get Started
+                                </Link>
+                            </>
+                        )}
                     </div>
 
                     {/* Mobile Hamburger */}
@@ -163,20 +211,47 @@ export default function Header() {
                             );
                         })}
                         <div className="mt-3 grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
-                            <Link
-                                href="/auth"
-                                onClick={() => setMenuOpen(false)}
-                                className="rounded-full bg-white/10 px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-white/20"
-                            >
-                                Sign In
-                            </Link>
-                            <Link
-                                href="/auth/signup"
-                                onClick={() => setMenuOpen(false)}
-                                className="rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:opacity-90"
-                            >
-                                Get Started
-                            </Link>
+                            {user ? (
+                                <>
+                                <Link
+                                    href={roleHome}
+                                    onClick={() => setMenuOpen(false)}
+                                    className="rounded-full bg-white/10 px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-white/20"
+                                >
+                                    Dashboard
+                                </Link>
+                                <Link
+                                    href={profileHome}
+                                    onClick={() => setMenuOpen(false)}
+                                    className="rounded-full bg-white/10 px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-white/20"
+                                >
+                                    Profile
+                                </Link>
+                                <button
+                                    onClick={() => { setMenuOpen(false); handleLogout(); }}
+                                    className="rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:opacity-90"
+                                >
+                                    Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        href="/auth"
+                                        onClick={() => setMenuOpen(false)}
+                                        className="rounded-full bg-white/10 px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-white/20"
+                                    >
+                                        Sign In
+                                    </Link>
+                                    <Link
+                                        href="/auth/signup"
+                                        onClick={() => setMenuOpen(false)}
+                                        className="rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:opacity-90"
+                                    >
+                                        Get Started
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
