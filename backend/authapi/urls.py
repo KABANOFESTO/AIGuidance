@@ -17,6 +17,7 @@ from .views import (
     UserDetailView,
     CurrentUserView,
     AdminAnalyticsView,
+    AdminReportSummaryView,
 )
 
 urlpatterns = [
@@ -55,4 +56,5 @@ urlpatterns = [
     ),
     path("me/", CurrentUserView.as_view(), name="current-user"),
     path("admin/analytics/", AdminAnalyticsView.as_view(), name="admin-analytics"),
+    path("admin/reports/summary/", AdminReportSummaryView.as_view(), name="admin-report-summary"),
 ]

@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Activity, BarChart3, Brain, Download, FileText, Loader2 } from "lucide-react";
-import { useGetAdminAnalyticsQuery } from "@/lib/redux/slices/AuthSlice";
-import { useGetFeedbackAdminOverviewQuery } from "@/lib/redux/slices/FeedbackSlice";
+import { useGetAdminReportSummaryQuery } from "@/lib/redux/slices/AuthSlice";
 
 type FileFormat = "PDF" | "Excel";
 
@@ -20,8 +19,7 @@ function downloadTextFile(filename: string, content: string) {
 }
 
 export default function ReportsAndDiagnosticsPage() {
-    const { data: analytics } = useGetAdminAnalyticsQuery();
-    const { data: feedback = [] } = useGetFeedbackAdminOverviewQuery();
+    const { data: report } = useGetAdminReportSummaryQuery(undefined);
     const [creating, setCreating] = useState(false);
     const [recentReports, setRecentReports] = useState<{ id: string; title: string; format: FileFormat; generatedLabel: string; size: string }[]>([]);
 
@@ -35,13 +33,13 @@ export default function ReportsAndDiagnosticsPage() {
         const lines = [
             title,
             "",
-            `Users: ${analytics?.users?.total ?? 0} total, ${analytics?.users?.active ?? 0} active`,
-            `Students: ${analytics?.students?.total ?? 0} total, ${analytics?.students?.at_risk ?? 0} at risk`,
-            `Chat sessions: ${analytics?.chatbot?.total_conversations ?? 0}`,
-            `Feedback entries: ${(feedback as any[]).length}`,
+            `Users: ${report?.users?.total ?? 0} total, ${report?.users?.active ?? 0} active`,
+            `Students: ${report?.students?.total ?? 0} total, ${report?.students?.at_risk ?? 0} at risk`,
+            `Course materials: ${report?.materials?.published ?? 0}/${report?.materials?.total ?? 0} published`,
+            `Feedback entries: ${report?.feedback?.total ?? 0}`,
             "",
             "Recent audit logs:",
-            ...(analytics?.audit?.recent_logs ?? []).slice(0, 5).map((entry: any) => `- ${entry.action} by ${entry.user ?? "system"} at ${entry.timestamp}`),
+            ...(report?.audit?.recent_logs ?? []).slice(0, 5).map((entry: any) => `- ${entry.action} by ${entry.user ?? "system"} at ${entry.timestamp}`),
         ];
         return lines.join("\n");
     };
@@ -65,7 +63,7 @@ export default function ReportsAndDiagnosticsPage() {
         }
     };
 
-    const generatedCount = (analytics?.audit?.recent_logs ?? []).length + (feedback as any[]).length;
+    const generatedCount = (report?.audit?.recent_logs ?? []).length + (report?.feedback?.recent ?? []).length;
 
     return (
         <main className="min-h-screen bg-gray-50 p-6 lg:p-8">
@@ -102,15 +100,15 @@ export default function ReportsAndDiagnosticsPage() {
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="text-sm text-gray-500">Total Users</div>
-                        <div className="mt-2 text-2xl font-bold text-gray-900">{analytics?.users?.total ?? "--"}</div>
+                        <div className="mt-2 text-2xl font-bold text-gray-900">{report?.users?.total ?? "--"}</div>
                     </div>
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="text-sm text-gray-500">Active Students</div>
-                        <div className="mt-2 text-2xl font-bold text-gray-900">{analytics?.students?.total ?? "--"}</div>
+                        <div className="mt-2 text-2xl font-bold text-gray-900">{report?.students?.total ?? "--"}</div>
                     </div>
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="text-sm text-gray-500">Recent Feedback</div>
-                        <div className="mt-2 text-2xl font-bold text-gray-900">{(feedback as any[]).length}</div>
+                        <div className="mt-2 text-2xl font-bold text-gray-900">{report?.feedback?.total ?? "--"}</div>
                     </div>
                 </div>
 

@@ -4,7 +4,8 @@ from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.conf import settings
-from django.db.models import Avg
+from django.db.models import Avg, Count, Q
+from django.utils import timezone
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -27,7 +28,9 @@ from .permissions import (
 from auditLog.audit_log_utils import log_action
 from auditLog.models import AuditLog
 from chatbot.models import ChatConversation
-from recommendations.models import PerformanceAnalysis
+from Feedback.models import Feedback
+from academics.models import CourseMaterial
+from recommendations.models import CareerRecommendation, CourseRecommendation, PerformanceAnalysis
 from students.models import StudentProfile
 import logging
 
@@ -843,6 +846,86 @@ class AdminAnalyticsView(APIView):
                         }
                         for entry in recent_logs
                     ]
+                },
+            }
+        )
+
+
+class AdminReportSummaryView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        total_students = StudentProfile.objects.count()
+        at_risk_students = StudentProfile.objects.filter(risk_score__gte=0.6).count()
+        average_performance = PerformanceAnalysis.objects.aggregate(avg=Avg("performance_score"))["avg"] or 0
+        average_feedback = Feedback.objects.aggregate(avg=Avg("rating"))["avg"] or 0
+        material_stats = CourseMaterial.objects.aggregate(total=Count("id"), published=Count("id", filter=Q(is_published=True)))
+        recent_feedback = Feedback.objects.select_related("user").order_by("-created_at")[:5]
+        recent_materials = CourseMaterial.objects.select_related("course", "uploaded_by").order_by("-created_at")[:5]
+        recent_logs = AuditLog.objects.select_related("user", "target_user").order_by("-timestamp")[:8]
+
+        return Response(
+            {
+                "generated_at": timezone.now(),
+                "users": {
+                    "total": total_users,
+                    "active": active_users,
+                    "inactive": total_users - active_users,
+                },
+                "students": {
+                    "total": total_students,
+                    "at_risk": at_risk_students,
+                    "average_performance": round(average_performance, 2),
+                },
+                "recommendations": {
+                    "course": CourseRecommendation.objects.count(),
+                    "career": CareerRecommendation.objects.count(),
+                    "performance": PerformanceAnalysis.objects.count(),
+                },
+                "feedback": {
+                    "total": Feedback.objects.count(),
+                    "average_rating": round(average_feedback, 2),
+                    "recent": [
+                        {
+                            "id": item.id,
+                            "title": item.title,
+                            "rating": item.rating,
+                            "category": item.category,
+                            "user": item.user.username,
+                            "created_at": item.created_at,
+                        }
+                        for item in recent_feedback
+                    ],
+                },
+                "materials": {
+                    "total": material_stats.get("total", 0),
+                    "published": material_stats.get("published", 0),
+                    "recent": [
+                        {
+                            "id": item.id,
+                            "title": item.title,
+                            "course": item.course.code,
+                            "is_published": item.is_published,
+                            "downloads": item.downloads,
+                            "uploaded_by": item.uploaded_by.username if item.uploaded_by else None,
+                            "created_at": item.created_at,
+                        }
+                        for item in recent_materials
+                    ],
+                },
+                "audit": {
+                    "recent_logs": [
+                        {
+                            "id": entry.id,
+                            "action": entry.action,
+                            "user": str(entry.user) if entry.user else None,
+                            "target_user": str(entry.target_user) if entry.target_user else None,
+                            "timestamp": entry.timestamp,
+                        }
+                        for entry in recent_logs
+                    ],
                 },
             }
         )

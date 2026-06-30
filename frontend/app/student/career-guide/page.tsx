@@ -6,8 +6,8 @@ import { useGetCareerRecommendationsQuery, useGenerateCareerRecommendationsMutat
 import { useGetMyStudentProfileQuery } from "@/lib/redux/slices/StudentSlice";
 
 export default function CareerGuidePage() {
-    const { data: profile } = useGetMyStudentProfileQuery();
-    const { data: careers = [], refetch, isFetching } = useGetCareerRecommendationsQuery();
+    const { data: profile } = useGetMyStudentProfileQuery(undefined);
+    const { data: careers = [], refetch, isFetching } = useGetCareerRecommendationsQuery(undefined);
     const [generateCareers, { isLoading }] = useGenerateCareerRecommendationsMutation();
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export default function CareerGuidePage() {
     }, [profile]);
 
     const handleRefresh = async () => {
-        await generateCareers().unwrap();
+        await generateCareers(undefined).unwrap();
         await refetch();
         setToast("Career recommendations refreshed from your live profile.");
         setTimeout(() => setToast(null), 2200);

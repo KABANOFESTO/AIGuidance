@@ -54,6 +54,10 @@ const authApi = apiSlice.injectEndpoints({
             query: () => ({ url: "auth/admin/analytics/", method: "GET" }),
             providesTags: ["AdminAnalytics"],
         }),
+        getAdminReportSummary: builder.query({
+            query: () => ({ url: "auth/admin/reports/summary/", method: "GET" }),
+            providesTags: ["AdminReport"],
+        }),
     }),
 });
 
@@ -72,4 +76,5 @@ export const {
     useDeleteUserMutation,
     useToggleUserActiveMutation,
     useGetAdminAnalyticsQuery,
+    useGetAdminReportSummaryQuery,
 } = authApi;

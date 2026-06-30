@@ -37,7 +37,7 @@ const FALLBACK_ACTIVITY = [
 ];
 
 export default function Dashboard() {
-    const { data, isLoading, refetch } = useGetAdminAnalyticsQuery();
+    const { data, isLoading, refetch } = useGetAdminAnalyticsQuery(undefined);
     const users = data?.users;
     const students = data?.students;
     const chatbot = data?.chatbot;
