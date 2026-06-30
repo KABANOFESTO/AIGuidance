@@ -72,3 +72,33 @@ class User(AbstractUser):
     def is_user_active(self):
         """Check if user is active (using status field as source of truth)"""
         return self.status == "Active"
+
+
+class UserNotification(models.Model):
+    NOTIFICATION_TYPES = (
+        ("system", "System"),
+        ("academic", "Academic"),
+        ("recommendation", "Recommendation"),
+        ("chat", "Chat"),
+        ("audit", "Audit"),
+    )
+
+    user = models.ForeignKey(
+        "authapi.User",
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=30, choices=NOTIFICATION_TYPES, default="system")
+    link = models.CharField(max_length=255, blank=True, default="")
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.title}"

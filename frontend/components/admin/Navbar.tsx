@@ -2,8 +2,10 @@
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import React, { useState, useEffect } from 'react'
-import { ChevronDown, Search, Bell } from 'lucide-react'
-import { useGetMyDetailsMutation } from "@/lib/redux/slices/AuthSlice";
+import { useRouter } from 'next/navigation';
+import { ChevronDown, Search, Bell, CheckCheck } from 'lucide-react'
+import { useCurrentUserQuery } from "@/lib/redux/slices/AuthSlice";
+import { useGetNotificationsQuery, useGetUnreadNotificationCountQuery, useMarkAllNotificationsReadMutation } from "@/lib/redux/slices/NotificationSlice";
 
 
 interface NavbarProps {
@@ -11,10 +13,18 @@ interface NavbarProps {
 }
 
 const Navbar = ({ onSearch }: NavbarProps) => {
+    const router = useRouter();
     const { data: sessionData } = useSession()
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [getMyDetails, { data: userDetails, isLoading, error }] = useGetMyDetailsMutation();
+    const hasAccessToken = typeof window !== "undefined" && Boolean(localStorage.getItem("access"));
+    const { data: userDetails, isLoading, error, refetch } = useCurrentUserQuery(undefined, {
+        skip: !hasAccessToken,
+    });
+    const { data: notifications = [] } = useGetNotificationsQuery(undefined, { skip: !hasAccessToken });
+    const { data: unreadData } = useGetUnreadNotificationCountQuery(undefined, { skip: !hasAccessToken });
+    const [markAllRead] = useMarkAllNotificationsReadMutation();
+    const [showNotifications, setShowNotifications] = useState(false);
 
     // Debounce search input
     useEffect(() => {
@@ -28,10 +38,6 @@ const Navbar = ({ onSearch }: NavbarProps) => {
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
     };
-
-    useEffect(() => {
-        getMyDetails({});
-    }, [getMyDetails]);
 
     const getProfileImageUrl = () => {
         if (userDetails?.profile_picture) {
@@ -68,8 +74,12 @@ const Navbar = ({ onSearch }: NavbarProps) => {
     const handleProfileClick = () => {
         setShowUserDropdown(!showUserDropdown);
         if (!showUserDropdown) {
-            getMyDetails({});
+            refetch();
         }
+    };
+
+    const toggleNotifications = () => {
+        setShowNotifications((v) => !v);
     };
 
     useEffect(() => {
@@ -78,16 +88,19 @@ const Navbar = ({ onSearch }: NavbarProps) => {
             if (!target.closest('.user-dropdown-container')) {
                 setShowUserDropdown(false);
             }
+            if (!target.closest('.notification-dropdown-container')) {
+                setShowNotifications(false);
+            }
         };
 
-        if (showUserDropdown) {
+        if (showUserDropdown || showNotifications) {
             document.addEventListener('mousedown', handleClickOutside);
         }
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [showUserDropdown]);
+    }, [showUserDropdown, showNotifications]);
 
     return (
         <div className='w-full flex flex-row items-center bg-white px-6 py-3 justify-between border-b border-gray-100'>
@@ -109,11 +122,47 @@ const Navbar = ({ onSearch }: NavbarProps) => {
             <div className='flex flex-row gap-4 items-center'>
 
                 {/* Notification bell */}
-                <div className='relative'>
-                    <div className='p-2 cursor-pointer rounded-full bg-[#F0F2F5] flex items-center justify-center'>
+                <div className='relative notification-dropdown-container'>
+                    <button
+                        type="button"
+                        onClick={toggleNotifications}
+                        className='relative p-2 cursor-pointer rounded-full bg-[#F0F2F5] flex items-center justify-center'
+                        aria-label="View notifications"
+                    >
                         <Bell size={18} className="text-gray-600" />
-                    </div>
-                    <span className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full w-2.5 h-2.5 border-2 border-white" />
+                        {unreadData?.unread_count ? (
+                            <span className="absolute -top-0.5 -right-0.5 min-w-5 rounded-full bg-red-500 px-1 text-[10px] font-bold leading-5 text-white">
+                                {unreadData.unread_count}
+                            </span>
+                        ) : null}
+                    </button>
+                    {showNotifications && (
+                        <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-gray-200 bg-white shadow-xl">
+                            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Notifications</p>
+                                    <p className="text-xs text-gray-400">{unreadData?.unread_count ?? 0} unread</p>
+                                </div>
+                                <button
+                                    onClick={() => markAllRead()}
+                                    className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                                >
+                                    <CheckCheck size={13} />
+                                    Mark all read
+                                </button>
+                            </div>
+                            <div className="max-h-96 overflow-y-auto">
+                                {notifications.length ? notifications.map((item: any) => (
+                                    <div key={item.id} className={`border-b border-gray-50 px-4 py-3 ${item.is_read ? 'bg-white' : 'bg-sky-50/40'}`}>
+                                        <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                                        <p className="mt-1 text-sm text-gray-600">{item.message}</p>
+                                    </div>
+                                )) : (
+                                    <div className="px-4 py-8 text-center text-sm text-gray-400">No notifications yet.</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* User trigger + dropdown */}
@@ -174,12 +223,12 @@ const Navbar = ({ onSearch }: NavbarProps) => {
                                 </div>
                             ) : error ? (
                                 <div className="text-center py-4">
-                                    <p className="text-red-500 text-sm mb-2">Failed to load user details</p>
-                                    <button
-                                        onClick={() => getMyDetails({})}
-                                        className="text-violet-600 text-sm hover:underline"
-                                    >
-                                        Retry
+                                        <p className="text-red-500 text-sm mb-2">Failed to load user details</p>
+                                        <button
+                                            onClick={() => refetch()}
+                                            className="text-violet-600 text-sm hover:underline"
+                                        >
+                                            Retry
                                     </button>
                                 </div>
                             ) : userDetails ? (
@@ -222,14 +271,26 @@ const Navbar = ({ onSearch }: NavbarProps) => {
                                     </div>
 
                                     <div className="pt-3 border-t border-gray-100 space-y-2">
-                                        <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md">
+                                        <button
+                                            onClick={() => {
+                                                setShowUserDropdown(false);
+                                                router.push('/admin/profile');
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+                                        >
                                             View Profile
                                         </button>
-                                        <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md">
+                                        <button
+                                            onClick={() => {
+                                                setShowUserDropdown(false);
+                                                router.push('/admin/profile');
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+                                        >
                                             Settings
                                         </button>
                                         <button
-                                            onClick={() => getMyDetails({})}
+                                            onClick={() => refetch()}
                                             className="w-full text-left px-3 py-2 text-sm text-violet-600 hover:bg-violet-50 rounded-md"
                                         >
                                             Refresh Details

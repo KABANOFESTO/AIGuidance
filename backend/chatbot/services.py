@@ -47,7 +47,12 @@ def knowledge_base_matches(message, limit=3):
 
     matches = []
     for item in KnowledgeBase.objects.filter(is_active=True):
-        kb_tokens = tokenize(item.question) | tokenize(item.answer) | tokenize(item.category) | set(map(str.lower, item.keywords or []))
+        kb_tokens = (
+            tokenize(item.question)
+            | tokenize(item.answer)
+            | tokenize(item.category)
+            | {str(keyword).lower() for keyword in (item.keywords or [])}
+        )
         overlap = len(tokens & kb_tokens)
         if overlap:
             score = (overlap * 2) + item.priority

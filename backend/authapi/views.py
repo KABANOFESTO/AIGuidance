@@ -1,5 +1,4 @@
 from django.shortcuts import render
-from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -148,9 +147,9 @@ class MyTokenObtainView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user = authenticate(username=email, password=password)
+        user = User.objects.filter(email=email).first()
 
-        if user:
+        if user and user.check_password(password):
             if user.is_active:
                 refresh = RefreshToken.for_user(user)
 
@@ -170,21 +169,21 @@ class MyTokenObtainView(APIView):
                     },
                     status=status.HTTP_200_OK,
                 )
-            else:
-                # Log failed login due to inactive account
-                log_action(
-                    request,
-                    "LOGIN",
-                    target_user=user,
-                    additional_data={
-                        "status": "failed",
-                        "reason": "account_deactivated",
-                    },
-                )
-                return Response(
-                    {"error": "Account is deactivated"},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
+
+            # Log failed login due to inactive account
+            log_action(
+                request,
+                "LOGIN",
+                target_user=user,
+                additional_data={
+                    "status": "failed",
+                    "reason": "account_deactivated",
+                },
+            )
+            return Response(
+                {"error": "Account is deactivated"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
         # Log failed login with invalid credentials
         log_action(
@@ -482,7 +481,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminOrStudentOrLecturer]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrLecturer]
 
     def _get_changed_fields(self, old_data, new_data):
         """Helper to identify changed fields"""
