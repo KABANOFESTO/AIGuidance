@@ -26,7 +26,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 }
 
 export default function LecturerFeedbackPage() {
-    const { data: feedback = [], refetch } = useGetFeedbackAdminOverviewQuery();
+    const { data: feedback = [], refetch } = useGetFeedbackAdminOverviewQuery(undefined);
     const [submitFeedback] = useSubmitFeedbackMutation();
     const [module, setModule] = useState<ModuleCode>("CS450");
     const [rating, setRating] = useState(5);

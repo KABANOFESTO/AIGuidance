@@ -7,7 +7,7 @@ import { useCreateUserMutation, useDeleteUserMutation, useGetAllUsersQuery, useT
 type RoleFilter = "all" | "Admin" | "Student" | "Lecturer";
 
 export default function UserManagement() {
-    const { data: users = [], isLoading, refetch } = useGetAllUsersQuery();
+    const { data: users = [], isLoading, refetch } = useGetAllUsersQuery(undefined);
     const [createUser] = useCreateUserMutation();
     const [deleteUser] = useDeleteUserMutation();
     const [toggleUserActive] = useToggleUserActiveMutation();

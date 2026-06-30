@@ -7,8 +7,8 @@ import { useGetAdminAnalyticsQuery } from "@/lib/redux/slices/AuthSlice";
 import { useGetFeedbackAdminOverviewQuery } from "@/lib/redux/slices/FeedbackSlice";
 
 export default function Dashboard() {
-    const { data, isLoading, refetch } = useGetAdminAnalyticsQuery({});
-    const { data: feedback = [] } = useGetFeedbackAdminOverviewQuery({});
+    const { data, isLoading, refetch } = useGetAdminAnalyticsQuery(undefined);
+    const { data: feedback = [] } = useGetFeedbackAdminOverviewQuery(undefined);
 
     const users = data?.users || {};
     const students = data?.students || {};

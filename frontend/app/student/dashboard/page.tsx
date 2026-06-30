@@ -107,12 +107,12 @@ function DeadlineRow({ deadline }: { deadline: Deadline }) {
 
 export default function StudentDashboardPage() {
     const [showAdviceToast, setShowAdviceToast] = useState(false);
-    const { data: academicSummary } = useGetAcademicSummaryQuery();
-    const { data: courseRecs = [] } = useGetCourseRecommendationsQuery();
-    const { data: careerRecs = [] } = useGetCareerRecommendationsQuery();
-    const { data: performance = [] } = useGetPerformanceAnalysesQuery();
-    const { data: unread } = useGetUnreadNotificationCountQuery();
-    const { data: courses = [] } = useGetCoursesQuery();
+    const { data: academicSummary } = useGetAcademicSummaryQuery(undefined);
+    const { data: courseRecs = [] } = useGetCourseRecommendationsQuery(undefined);
+    const { data: careerRecs = [] } = useGetCareerRecommendationsQuery(undefined);
+    const { data: performance = [] } = useGetPerformanceAnalysesQuery(undefined);
+    const { data: unread } = useGetUnreadNotificationCountQuery(undefined);
+    const { data: courses = [] } = useGetCoursesQuery(undefined);
 
     const stats: StatCard[] = useMemo(() => [
         {
@@ -197,7 +197,7 @@ export default function StudentDashboardPage() {
                         <h2 className="text-lg font-bold text-gray-900">Recommended Courses</h2>
                         <p className="mt-1 text-sm text-gray-500">Generated from your academic profile and interests</p>
                         <div className="mt-4 space-y-3">
-                            {courseTitles.length ? courseTitles.map((title) => (
+                            {courseTitles.length ? courseTitles.map((title: string) => (
                                 <div key={title} className="flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3">
                                     <span className="text-sm font-medium text-gray-800">{title}</span>
                                     <span className="text-xs text-gray-400">Live</span>
@@ -207,7 +207,7 @@ export default function StudentDashboardPage() {
 
                         <h2 className="mt-6 text-lg font-bold text-gray-900">Career Matches</h2>
                         <div className="mt-4 space-y-3">
-                            {careerTitles.length ? careerTitles.map((title) => (
+                            {careerTitles.length ? careerTitles.map((title: string) => (
                                 <div key={title} className="flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3">
                                     <span className="text-sm font-medium text-gray-800">{title}</span>
                                     <span className="text-xs text-gray-400">Live</span>

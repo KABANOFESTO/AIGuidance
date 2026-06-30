@@ -72,7 +72,7 @@ function ModuleRow({ mod }: { mod: Module }) {
 
 export default function LecturerDashboard() {
     const { data: me } = useCurrentUserQuery(undefined, { skip: typeof window === "undefined" });
-    const { data: analytics, refetch } = useGetAdminAnalyticsQuery();
+    const { data: analytics, refetch } = useGetAdminAnalyticsQuery(undefined);
     const stats: StatCard[] = useMemo(
         () => [
             {

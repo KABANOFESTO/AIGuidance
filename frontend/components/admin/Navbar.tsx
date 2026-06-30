@@ -144,7 +144,7 @@ const Navbar = ({ onSearch }: NavbarProps) => {
                                     <p className="text-xs text-gray-400">{unreadData?.unread_count ?? 0} unread</p>
                                 </div>
                                 <button
-                                    onClick={() => markAllRead()}
+                                    onClick={() => markAllRead(undefined)}
                                     className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
                                 >
                                     <CheckCheck size={13} />
@@ -160,6 +160,14 @@ const Navbar = ({ onSearch }: NavbarProps) => {
                                 )) : (
                                     <div className="px-4 py-8 text-center text-sm text-gray-400">No notifications yet.</div>
                                 )}
+                            </div>
+                            <div className="border-t border-gray-100 px-4 py-3">
+                                <button
+                                    onClick={() => router.push("/admin/notifications")}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                                >
+                                    View all notifications
+                                </button>
                             </div>
                         </div>
                     )}

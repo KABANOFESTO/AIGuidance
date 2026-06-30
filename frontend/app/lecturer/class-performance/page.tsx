@@ -15,9 +15,9 @@ function scoreColor(score: number) {
 }
 
 export default function ClassPerformance() {
-    const { data: records = [] } = useGetAcademicRecordsQuery();
-    const { data: attendance = [] } = useGetAttendanceRecordsQuery();
-    const { data: feedback = [] } = useGetFeedbackAdminOverviewQuery();
+    const { data: records = [] } = useGetAcademicRecordsQuery(undefined);
+    const { data: attendance = [] } = useGetAttendanceRecordsQuery(undefined);
+    const { data: feedback = [] } = useGetFeedbackAdminOverviewQuery(undefined);
     const [selectedModule, setSelectedModule] = useState<ModuleCode>("");
     const [toast, setToast] = useState<string | null>(null);
 

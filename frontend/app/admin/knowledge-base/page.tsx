@@ -23,7 +23,7 @@ const EMPTY_FORM: KBForm = {
 };
 
 export default function KnowledgeBaseManagement() {
-    const { data: entries = [], isLoading, refetch } = useGetKnowledgeBaseQuery();
+    const { data: entries = [], isLoading, refetch } = useGetKnowledgeBaseQuery(undefined);
     const [createEntry] = useCreateKnowledgeBaseEntryMutation();
     const [updateEntry] = useUpdateKnowledgeBaseEntryMutation();
     const [deleteEntry] = useDeleteKnowledgeBaseEntryMutation();

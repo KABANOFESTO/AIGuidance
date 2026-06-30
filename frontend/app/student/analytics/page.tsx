@@ -19,8 +19,8 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
 
 export default function PerformanceAnalyticsPage() {
     const reportRef = useRef<HTMLDivElement>(null);
-    const { data: summary } = useGetAcademicSummaryQuery();
-    const { data: analyses = [] } = useGetPerformanceAnalysesQuery();
+    const { data: summary } = useGetAcademicSummaryQuery(undefined);
+    const { data: analyses = [] } = useGetPerformanceAnalysesQuery(undefined);
     const [isExporting, setIsExporting] = useState(false);
 
     const stats = useMemo(() => ([
@@ -74,7 +74,7 @@ export default function PerformanceAnalyticsPage() {
                         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                             <h2 className="text-lg font-bold text-gray-900">Recent Grades</h2>
                             <div className="mt-5 space-y-4">
-                                {grades.length ? grades.map((grade) => (
+                                {grades.length ? grades.map((grade: { label: string; score: number }) => (
                                     <div key={grade.label}>
                                         <div className="mb-1.5 flex items-center justify-between text-sm">
                                             <span className="font-medium text-gray-700">{grade.label}</span>
