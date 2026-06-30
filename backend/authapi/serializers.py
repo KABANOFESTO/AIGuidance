@@ -7,6 +7,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True, required=True, validators=[validate_password]
     )
+    role = serializers.ChoiceField(choices=[("Student", "Student")], default="Student", required=False)
 
     class Meta:
         model = User
@@ -17,7 +18,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"],
-            role=validated_data["role"],
+            role=validated_data.get("role", "Student"),
             is_active=validated_data.get("is_active", True),
         )
         return user
@@ -48,7 +49,7 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email", "role", "profile_picture", "is_active")
+        fields = ("id", "username", "email", "role", "status", "profile_picture", "is_active")
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
