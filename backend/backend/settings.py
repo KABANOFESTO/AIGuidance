@@ -48,8 +48,14 @@ INSTALLED_APPS = [
     "django_filters",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
 
     'authapi.apps.AuthapiConfig',
+    'chatbot.apps.ChatbotConfig',
+    'students.apps.StudentsConfig',
+    'academics.apps.AcademicsConfig',
+    'recommendations.apps.RecommendationsConfig',
+    'Feedback.apps.FeedbackConfig',
     'auditLog',
     'corsheaders',
 ]

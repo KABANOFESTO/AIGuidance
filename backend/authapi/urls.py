@@ -11,15 +11,18 @@ from .views import (
     ProfileUpdateView,
     ForgotPasswordView,
     ResetPasswordView,
+    LogoutView,
     UserActivateDeactivateView,
     UserListView,
     UserDetailView,
     CurrentUserView,
+    AdminAnalyticsView,
 )
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", MyTokenObtainView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
     path("admin-data/", AdminOnlyView.as_view(), name="admin-data"),
     path("lecturer-data/", LecturerOnlyView.as_view(), name="lecturer-data"),
     path(
@@ -51,4 +54,5 @@ urlpatterns = [
         name="admin-user-toggle-active",
     ),
     path("me/", CurrentUserView.as_view(), name="current-user"),
+    path("admin/analytics/", AdminAnalyticsView.as_view(), name="admin-analytics"),
 ]

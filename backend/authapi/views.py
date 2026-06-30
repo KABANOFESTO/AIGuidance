@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.conf import settings
+from django.db.models import Avg
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -25,6 +26,10 @@ from .permissions import (
     IsLecturer,
 )
 from auditLog.audit_log_utils import log_action
+from auditLog.models import AuditLog
+from chatbot.models import ChatConversation
+from recommendations.models import PerformanceAnalysis
+from students.models import StudentProfile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,6 +41,11 @@ class RegisterView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         user = serializer.save()
+        if user.role == "Student":
+            StudentProfile.objects.get_or_create(
+                user=user,
+                defaults={"student_id": f"STU-{user.id:05d}"},
+            )
         log_action(
             self.request,
             "USER_CREATE",
@@ -53,6 +63,11 @@ class AdminUserCreateView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        if user.role == "Student":
+            StudentProfile.objects.get_or_create(
+                user=user,
+                defaults={"student_id": f"STU-{user.id:05d}"},
+            )
 
         # Log user creation by admin
         log_action(
@@ -184,6 +199,22 @@ class MyTokenObtainView(APIView):
         return Response(
             {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
         )
+
+
+class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                pass
+
+        log_action(request, "LOGOUT", target_user=request.user)
+        return Response({"message": "Logged out successfully."}, status=status.HTTP_200_OK)
 
 
 class AdminOnlyView(APIView):
@@ -643,8 +674,8 @@ class AdminUserDeleteView(generics.DestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if instance.role == "admin":
-            admin_count = User.objects.filter(role="admin", is_active=True).count()
+        if instance.role == "Admin":
+            admin_count = User.objects.filter(role="Admin", is_active=True).count()
             if admin_count <= 1:
                 return Response(
                     {"error": "Cannot delete the last active admin account."},
@@ -764,3 +795,55 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+
+class AdminAnalyticsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        total_users = User.objects.count()
+        active_users = User.objects.filter(is_active=True).count()
+        students = StudentProfile.objects.select_related("user")
+        at_risk_students = students.filter(risk_score__gte=0.6).count()
+        average_performance = PerformanceAnalysis.objects.aggregate(avg=Avg("performance_score"))["avg"] or 0
+        recent_chats = ChatConversation.objects.select_related("user").order_by("-created_at")[:5]
+        recent_logs = AuditLog.objects.select_related("user", "target_user").order_by("-timestamp")[:10]
+
+        return Response(
+            {
+                "users": {
+                    "total": total_users,
+                    "active": active_users,
+                    "inactive": total_users - active_users,
+                },
+                "students": {
+                    "total": students.count(),
+                    "at_risk": at_risk_students,
+                    "average_performance": round(average_performance, 2),
+                },
+                "chatbot": {
+                    "total_conversations": ChatConversation.objects.count(),
+                    "recent_sessions": [
+                        {
+                            "id": conversation.id,
+                            "user": conversation.user.username,
+                            "intent": conversation.intent,
+                            "created_at": conversation.created_at,
+                        }
+                        for conversation in recent_chats
+                    ],
+                },
+                "audit": {
+                    "recent_logs": [
+                        {
+                            "id": entry.id,
+                            "action": entry.action,
+                            "user": str(entry.user) if entry.user else None,
+                            "target_user": str(entry.target_user) if entry.target_user else None,
+                            "timestamp": entry.timestamp,
+                        }
+                        for entry in recent_logs
+                    ]
+                },
+            }
+        )
