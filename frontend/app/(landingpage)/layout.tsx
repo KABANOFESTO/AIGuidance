@@ -22,7 +22,6 @@ export default function RootLayout({
 }>) {
     return (
         <div className={`${inter.className} antialiased min-h-screen flex flex-col relative`}>
-            {/* Background Video */}
             <video
                 autoPlay
                 muted
@@ -33,7 +32,6 @@ export default function RootLayout({
                 <source src="/animation/wave.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
             </video>
-            {/* Content Wrapper */}
             <div className="relative z-10 bg-black/50 min-h-screen flex flex-col">
                 <Header />
                 <main className="flex-grow">{children}</main>
