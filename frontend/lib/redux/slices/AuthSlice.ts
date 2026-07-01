@@ -27,6 +27,12 @@ const authApi = apiSlice.injectEndpoints({
         resetPassword: builder.mutation({
             query: (data) => ({ url: "auth/reset-password/", method: "POST", body: data }),
         }),
+        verifyEmail: builder.mutation({
+            query: ({ uidb64, token }) => ({ url: `auth/verify-email/${uidb64}/${token}/`, method: "GET" }),
+        }),
+        resendVerification: builder.mutation({
+            query: (data) => ({ url: "auth/resend-verification/", method: "POST", body: data }),
+        }),
         getAllUsers: builder.query({
             query: () => ({ url: "auth/users/", method: "GET" }),
             providesTags: ["User"],
@@ -66,6 +72,8 @@ export const {
     useLogoutMutation,
     useForgotPasswordMutation,
     useResetPasswordMutation,
+    useVerifyEmailMutation,
+    useResendVerificationMutation,
     useRegisterMutation,
     useUpdateProfileMutation,
     useGetAllUsersQuery,

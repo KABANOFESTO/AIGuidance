@@ -1,11 +1,11 @@
 "use client"
-import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Search, Bell, CheckCheck } from 'lucide-react'
 import { useCurrentUserQuery } from "@/lib/redux/slices/AuthSlice";
 import { useGetNotificationsQuery, useGetUnreadNotificationCountQuery, useMarkAllNotificationsReadMutation } from "@/lib/redux/slices/NotificationSlice";
+import { hasValidAccessToken } from "@/lib/auth/session";
 
 
 interface NavbarProps {
@@ -14,10 +14,9 @@ interface NavbarProps {
 
 const Navbar = ({ onSearch }: NavbarProps) => {
     const router = useRouter();
-    const { data: sessionData } = useSession()
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const hasAccessToken = typeof window !== "undefined" && Boolean(localStorage.getItem("access"));
+    const hasAccessToken = hasValidAccessToken();
     const { data: userDetails, isLoading, error, refetch } = useCurrentUserQuery(undefined, {
         skip: !hasAccessToken,
     });
@@ -196,16 +195,8 @@ const Navbar = ({ onSearch }: NavbarProps) => {
                                 ) : (
                                     <span className="text-sm font-semibold">{getUserInitials()}</span>
                                 )
-                            ) : sessionData?.user ? (
-                                <Image
-                                    src={sessionData?.user?.image || '/profile.png'}
-                                    alt='profile'
-                                    width={36}
-                                    height={36}
-                                    className='object-cover'
-                                />
                             ) : (
-                                <span className="text-sm font-semibold">SM</span>
+                                <span className="text-sm font-semibold">{getUserInitials()}</span>
                             )}
                         </div>
 

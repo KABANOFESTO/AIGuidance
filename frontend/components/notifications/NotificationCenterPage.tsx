@@ -11,11 +11,12 @@ import {
     useMarkAllNotificationsReadMutation,
     useMarkNotificationReadMutation,
 } from "@/lib/redux/slices/NotificationSlice";
+import { hasValidAccessToken } from "@/lib/auth/session";
 
 type RolePath = "/admin" | "/student" | "/lecturer";
 
 export default function NotificationCenterPage({ roleLabel, rolePath }: { roleLabel: string; rolePath: RolePath }) {
-    const hasAccessToken = typeof window !== "undefined" && Boolean(localStorage.getItem("access"));
+    const hasAccessToken = hasValidAccessToken();
     const { data: user } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
     const { data: notifications = [], refetch } = useGetNotificationsQuery(undefined, { skip: !hasAccessToken });
     const { data: unreadData } = useGetUnreadNotificationCountQuery(undefined, { skip: !hasAccessToken });

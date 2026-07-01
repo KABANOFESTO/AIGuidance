@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from "next/navigation";
 import { LogOut, LayoutGrid, UserCircle2 } from "lucide-react";
 import { useCurrentUserQuery, useLogoutMutation } from "@/lib/redux/slices/AuthSlice";
+import { hasValidAccessToken } from "@/lib/auth/session";
 
 const navItems = [
     { label: 'Features', href: '#features', id: 'features' },
@@ -18,7 +19,7 @@ export default function Header() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [activeSection, setActiveSection] = useState('features');
     const [isScrolled, setIsScrolled] = useState(false);
-    const hasAccessToken = typeof window !== "undefined" && Boolean(localStorage.getItem("access"));
+    const hasAccessToken = hasValidAccessToken();
     const { data: user } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
     const [logout] = useLogoutMutation();
 

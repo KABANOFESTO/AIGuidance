@@ -21,6 +21,7 @@ import {
     X,
 } from "lucide-react";
 import { useCurrentUserQuery, useLogoutMutation, useUpdateProfileMutation } from "@/lib/redux/slices/AuthSlice";
+import { hasValidAccessToken } from "@/lib/auth/session";
 
 type TabId = "profile" | "security" | "notifications" | "preferences";
 
@@ -240,7 +241,7 @@ function PreferencesPanel() {
 
 export default function ProfileSettingsPage({ roleLabel }: { roleLabel: string }) {
     const router = useRouter();
-    const hasAccessToken = typeof window !== "undefined" && Boolean(localStorage.getItem("access"));
+    const hasAccessToken = hasValidAccessToken();
     const { data: user, isLoading, refetch } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
     const [updateProfile] = useUpdateProfileMutation();
     const [logout] = useLogoutMutation();

@@ -20,6 +20,7 @@ import {
     useGetCourseMaterialsQuery,
     useGetCoursesQuery,
 } from "@/lib/redux/slices/AcademicSlice";
+import { hasValidAccessToken } from "@/lib/auth/session";
 
 type FileType = "PDF" | "PPTX" | "MP4" | "DOCX" | "ZIP" | "OTHER";
 
@@ -46,7 +47,7 @@ function iconFor(type: FileType) {
 }
 
 export default function CourseMaterials() {
-    const hasAccessToken = typeof window !== "undefined" && Boolean(localStorage.getItem("access"));
+    const hasAccessToken = hasValidAccessToken();
     const { data: user } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
     const { data: courses = [] } = useGetCoursesQuery(undefined, { skip: !hasAccessToken });
     const { data: materials = [], refetch, isLoading } = useGetCourseMaterialsQuery(undefined, { skip: !hasAccessToken });

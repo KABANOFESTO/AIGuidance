@@ -1,19 +1,30 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { clearStoredAuthTokens } from "@/lib/auth/session";
+
+const rawBaseQuery = fetchBaseQuery({
+    baseUrl: `${process.env.NEXT_PUBLIC_API_URL}/api/`,
+    prepareHeaders: (headers) => {
+        if (typeof window !== "undefined") {
+            const token = localStorage.getItem("access");
+            if (token) {
+                headers.set("Authorization", `Bearer ${token}`);
+            }
+        }
+        return headers;
+    },
+});
 
 export const apiSlice = createApi({
     reducerPath: "api",
-    baseQuery: fetchBaseQuery({
-        baseUrl: `${process.env.NEXT_PUBLIC_API_URL}/api/`,
-        prepareHeaders: (headers) => {
-            if (typeof window !== "undefined") {
-                const token = localStorage.getItem("access");
-                if (token) {
-                    headers.set("Authorization", `Bearer ${token}`);
-                }
+    baseQuery: async (args, api, extraOptions) => {
+        const result = await rawBaseQuery(args, api, extraOptions);
+        if ("error" in result && result.error && typeof result.error === "object" && "status" in result.error) {
+            if (result.error.status === 401) {
+                clearStoredAuthTokens();
             }
-            return headers;
-        },
-    }),
+        }
+        return result;
+    },
     tagTypes: [
         "Auth",
         "AuditLog",
