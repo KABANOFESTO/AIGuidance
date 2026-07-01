@@ -16,6 +16,9 @@ class AuditLog(models.Model):
         ("PASSWORD_RESET_COMPLETE", "Password reset completed"),
         ("PROFILE_UPDATE", "Profile updated"),
         ("PERMISSION_CHANGE", "User permissions changed"),
+        ("RECOMMENDATION_TRAIN", "Recommendation model trained"),
+        ("RECOMMENDATION_RECOMPUTE", "Student AI recomputed"),
+        ("RECOMMENDATION_GENERATE", "Recommendation generated"),
     ]
 
     user = models.ForeignKey(

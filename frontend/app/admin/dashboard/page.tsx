@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
     Area,
     AreaChart,
@@ -14,8 +15,14 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
-import { AlertTriangle, MessageSquare, UserCheck, Users, RefreshCw } from "lucide-react";
+import { AlertTriangle, MessageSquare, UserCheck, Users, RefreshCw, Sparkles, Bot } from "lucide-react";
+import { toast } from "sonner";
 import { useGetAdminAnalyticsQuery } from "@/lib/redux/slices/AuthSlice";
+import {
+    useAdminRecomputeStudentAIMutation,
+    useAdminTrainRecommendationModelsMutation,
+    useGetRecommendationModelStatusQuery,
+} from "@/lib/redux/slices/RecommendationSlice";
 
 const FALLBACK_GROWTH = [
     { month: "Jan", students: 320, staff: 80 },
@@ -38,6 +45,10 @@ const FALLBACK_ACTIVITY = [
 
 export default function Dashboard() {
     const { data, isLoading, refetch } = useGetAdminAnalyticsQuery(undefined);
+    const { data: modelStatus, refetch: refetchModelStatus } = useGetRecommendationModelStatusQuery(undefined);
+    const [trainModels, { isLoading: training }] = useAdminTrainRecommendationModelsMutation();
+    const [recomputeStudentAI, { isLoading: recomputing }] = useAdminRecomputeStudentAIMutation();
+    const [studentId, setStudentId] = useState("");
     const users = data?.users;
     const students = data?.students;
     const chatbot = data?.chatbot;
@@ -105,6 +116,33 @@ export default function Dashboard() {
             dotColor: "bg-emerald-500",
         }))),
     ];
+
+    const handleTrainModels = async () => {
+        try {
+            await trainModels(true).unwrap();
+            toast.success("Recommendation models retrained.");
+            await Promise.all([refetch(), refetchModelStatus()]);
+        } catch (error: any) {
+            toast.error(error?.data?.detail ?? "Unable to train recommendation models.");
+        }
+    };
+
+    const handleRecomputeStudent = async () => {
+        const trimmedStudentId = studentId.trim();
+        if (!trimmedStudentId) {
+            toast.error("Enter a student ID first.");
+            return;
+        }
+
+        try {
+            await recomputeStudentAI(trimmedStudentId).unwrap();
+            toast.success("Student AI recomputed.");
+            setStudentId("");
+            await Promise.all([refetch(), refetchModelStatus()]);
+        } catch (error: any) {
+            toast.error(error?.data?.detail ?? "Unable to recompute student AI.");
+        }
+    };
 
     return (
         <div className="space-y-6 bg-slate-50 p-6">
@@ -221,6 +259,92 @@ export default function Dashboard() {
                                 <span className="shrink-0 text-xs text-slate-400">{time}</span>
                             </div>
                         ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 xl:col-span-2">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                                <Sparkles size={14} />
+                                AI Model Controls
+                            </div>
+                            <h3 className="mt-3 text-base font-bold text-slate-900">Train and refresh the recommendation engine</h3>
+                            <p className="mt-1 text-sm text-slate-400">
+                                Retrain the hybrid ML pipeline or recompute one student after marks, attendance, or profile updates.
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleTrainModels}
+                            disabled={training}
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <Bot size={15} className={training ? "animate-pulse" : ""} />
+                            {training ? "Training..." : "Train Models"}
+                        </button>
+                    </div>
+
+                    <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <label className="block">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Student ID</span>
+                            <input
+                                value={studentId}
+                                onChange={(event) => setStudentId(event.target.value)}
+                                placeholder="e.g. STU-1024"
+                                className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white"
+                            />
+                        </label>
+                        <div className="flex items-end">
+                            <button
+                                onClick={handleRecomputeStudent}
+                                disabled={recomputing}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {recomputing ? "Recomputing..." : "Recompute Student AI"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                    <h3 className="text-base font-bold text-slate-900">Model Status</h3>
+                    <p className="mt-0.5 text-sm text-slate-400">Current backend artifact and metric snapshot</p>
+                    <div className="mt-4 space-y-3">
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                            <span className="text-sm font-medium text-slate-500">Version</span>
+                            <span className="text-sm font-bold text-slate-900">{modelStatus?.version ?? "unknown"}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                            <span className="text-sm font-medium text-slate-500">Trained At</span>
+                            <span className="text-sm font-bold text-slate-900">
+                                {modelStatus?.trained_at ? new Date(modelStatus.trained_at).toLocaleString() : "not trained yet"}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                            <span className="text-sm font-medium text-slate-500">Ready</span>
+                            <span className="text-sm font-bold text-emerald-600">
+                                {modelStatus?.performance_model_ready ? "Performance model online" : "Building"}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-3 gap-3">
+                        <div className="rounded-xl border border-slate-200 p-3">
+                            <p className="text-[11px] uppercase tracking-wide text-slate-400">Courses</p>
+                            <p className="mt-1 text-lg font-extrabold text-slate-900">{modelStatus?.metrics?.course_count ?? "--"}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 p-3">
+                            <p className="text-[11px] uppercase tracking-wide text-slate-400">Students</p>
+                            <p className="mt-1 text-lg font-extrabold text-slate-900">{modelStatus?.metrics?.student_count ?? "--"}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 p-3">
+                            <p className="text-[11px] uppercase tracking-wide text-slate-400">R2</p>
+                            <p className="mt-1 text-lg font-extrabold text-slate-900">
+                                {modelStatus?.metrics?.performance_r2 ?? "--"}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

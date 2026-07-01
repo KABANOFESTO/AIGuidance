@@ -246,7 +246,7 @@ class MyTokenObtainView(APIView):
                     {
                         "refresh": str(refresh),
                         "access": str(refresh.access_token),
-                        "user": UserSerializer(user).data,
+                        "user": UserSerializer(user, context={"request": request}).data,
                         "redirect_path": (
                             "/admin/dashboard"
                             if user.role == "Admin"
@@ -339,7 +339,7 @@ class VerifyEmailView(APIView):
                     if user.role == "Lecturer"
                     else "/student/dashboard"
                 ),
-                "user": UserSerializer(user).data,
+                "user": UserSerializer(user, context={"request": request}).data,
             },
             status=status.HTTP_200_OK,
         )
@@ -689,7 +689,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer.is_valid(raise_exception=True)
 
         # Store original data for logging
-        original_data = UserSerializer(instance).data
+        original_data = UserSerializer(instance, context={"request": request}).data
 
         self.perform_update(serializer)
 
@@ -736,7 +736,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         )
 
         # Store user info before deletion for logging
-        user_data = UserSerializer(instance).data
+        user_data = UserSerializer(instance, context={"request": request}).data
 
         # Log the deletion
         log_action(
@@ -789,7 +789,7 @@ class AdminUserUpdateView(generics.UpdateAPIView):
         logger.info(f"Admin {request.user.email} updating user {instance.email}")
 
         # Capture old data for logging
-        old_data = UserSerializer(instance).data
+        old_data = UserSerializer(instance, context={"request": request}).data
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -848,7 +848,7 @@ class AdminUserDeleteView(generics.DestroyAPIView):
         )
 
         # Store user data for logging
-        user_data = UserSerializer(instance).data
+        user_data = UserSerializer(instance, context={"request": request}).data
 
         # Log the deletion
         log_action(
@@ -941,7 +941,7 @@ class UserActivateDeactivateView(APIView):
         return Response(
             {
                 "message": f"User {user.email} has been {action}.",
-                "user": UserSerializer(user).data,
+                "user": UserSerializer(user, context={"request": request}).data,
                 "previous_status": original_status,
                 "new_status": user.status,
             }
@@ -954,7 +954,7 @@ class CurrentUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={"request": request})
         return Response(serializer.data)
 
 

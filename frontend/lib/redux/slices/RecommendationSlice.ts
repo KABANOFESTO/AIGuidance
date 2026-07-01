@@ -47,6 +47,35 @@ const recommendationApi = apiSlice.injectEndpoints({
             }),
             invalidatesTags: ["PerformanceAnalysis"],
         }),
+        regenerateRecommendations: builder.mutation({
+            query: (studentId?: string) => ({
+                url: "recommendations/regenerate/",
+                method: "POST",
+                body: studentId ? { student_id: studentId } : {},
+            }),
+            invalidatesTags: ["CourseRecommendation", "CareerRecommendation", "PerformanceAnalysis"],
+        }),
+        adminRecomputeStudentAI: builder.mutation({
+            query: (studentId: string) => ({
+                url: "recommendations/admin/recompute/",
+                method: "POST",
+                body: { student_id: studentId },
+            }),
+            invalidatesTags: ["CourseRecommendation", "CareerRecommendation", "PerformanceAnalysis", "StudentProfile"],
+        }),
+        getRecommendationModelStatus: builder.query({
+            query: () => ({ url: "recommendations/admin/status/", method: "GET" }),
+        }),
+        getRecommendationModelHistory: builder.query({
+            query: (limit: number = 20) => ({ url: `recommendations/admin/history/?limit=${limit}`, method: "GET" }),
+        }),
+        adminTrainRecommendationModels: builder.mutation({
+            query: (force: boolean = false) => ({
+                url: "recommendations/admin/train/",
+                method: "POST",
+                body: { force },
+            }),
+        }),
     }),
 });
 
@@ -57,4 +86,9 @@ export const {
     useGenerateCareerRecommendationsMutation,
     useGetPerformanceAnalysesQuery,
     useGeneratePerformanceAnalysisMutation,
+    useRegenerateRecommendationsMutation,
+    useAdminRecomputeStudentAIMutation,
+    useGetRecommendationModelStatusQuery,
+    useGetRecommendationModelHistoryQuery,
+    useAdminTrainRecommendationModelsMutation,
 } = recommendationApi;

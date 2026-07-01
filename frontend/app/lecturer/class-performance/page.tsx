@@ -1,10 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Download } from "lucide-react";
-import { useGetAcademicRecordsQuery, useGetAttendanceRecordsQuery } from "@/lib/redux/slices/AcademicSlice";
+import {
+    useCreateAcademicRecordMutation,
+    useCreateAttendanceRecordMutation,
+    useGetAcademicRecordsQuery,
+    useGetAttendanceRecordsQuery,
+    useGetCoursesQuery,
+} from "@/lib/redux/slices/AcademicSlice";
 import { useGetFeedbackAdminOverviewQuery } from "@/lib/redux/slices/FeedbackSlice";
+import { useGetStudentProfilesQuery } from "@/lib/redux/slices/StudentSlice";
+import { toast } from "sonner";
 
 type ModuleCode = string;
 
@@ -17,9 +25,30 @@ function scoreColor(score: number) {
 export default function ClassPerformance() {
     const { data: records = [] } = useGetAcademicRecordsQuery(undefined);
     const { data: attendance = [] } = useGetAttendanceRecordsQuery(undefined);
+    const { data: students = [] } = useGetStudentProfilesQuery(undefined);
+    const { data: courses = [] } = useGetCoursesQuery(undefined);
     const { data: feedback = [] } = useGetFeedbackAdminOverviewQuery(undefined);
+    const [createAcademicRecord] = useCreateAcademicRecordMutation();
+    const [createAttendanceRecord] = useCreateAttendanceRecordMutation();
     const [selectedModule, setSelectedModule] = useState<ModuleCode>("");
-    const [toast, setToast] = useState<string | null>(null);
+    const [exportToast, setExportToast] = useState<string | null>(null);
+    const [academicForm, setAcademicForm] = useState({
+        student_id: "",
+        course_id: "",
+        assignment_score: "",
+        exam_score: "",
+        attendance_score: "",
+        grade: "A",
+        semester: "",
+        notes: "",
+    });
+    const [attendanceForm, setAttendanceForm] = useState({
+        student_id: "",
+        course_id: "",
+        date: "",
+        status: "present",
+        notes: "",
+    });
 
     const modules = useMemo(() => {
         const codes = Array.from(new Set((records as any[]).map((r) => String(r.course_detail?.code || r.course?.code || r.course || "")))).filter(Boolean);
@@ -71,8 +100,60 @@ export default function ClassPerformance() {
     }, [records, attendance]);
 
     const handleExport = () => {
-        setToast(`Prepared live class report for ${currentModule}`);
-        setTimeout(() => setToast(null), 2400);
+        setExportToast(`Prepared live class report for ${currentModule}`);
+        setTimeout(() => setExportToast(null), 2400);
+    };
+
+    const handleAcademicSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        try {
+            await createAcademicRecord({
+                student_id: academicForm.student_id,
+                course_id: Number(academicForm.course_id),
+                assignment_score: Number(academicForm.assignment_score || 0),
+                exam_score: Number(academicForm.exam_score || 0),
+                attendance_score: Number(academicForm.attendance_score || 0),
+                grade: academicForm.grade,
+                semester: academicForm.semester,
+                notes: academicForm.notes,
+            }).unwrap();
+            toast.success("Marks saved and student profile refreshed.");
+            setAcademicForm({
+                student_id: "",
+                course_id: "",
+                assignment_score: "",
+                exam_score: "",
+                attendance_score: "",
+                grade: "A",
+                semester: "",
+                notes: "",
+            });
+        } catch (error: any) {
+            toast.error(error?.data?.detail || "Unable to save academic record.");
+        }
+    };
+
+    const handleAttendanceSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        try {
+            await createAttendanceRecord({
+                student_id: attendanceForm.student_id,
+                course_id: Number(attendanceForm.course_id),
+                date: attendanceForm.date,
+                status: attendanceForm.status,
+                notes: attendanceForm.notes,
+            }).unwrap();
+            toast.success("Attendance saved and student profile refreshed.");
+            setAttendanceForm({
+                student_id: "",
+                course_id: "",
+                date: "",
+                status: "present",
+                notes: "",
+            });
+        } catch (error: any) {
+            toast.error(error?.data?.detail || "Unable to save attendance record.");
+        }
     };
 
     return (
@@ -87,6 +168,81 @@ export default function ClassPerformance() {
                     <Download size={15} />
                     Export Snapshot
                 </button>
+            </div>
+
+            <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <form onSubmit={handleAcademicSubmit} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                    <h2 className="text-base font-bold text-gray-900">Upload Marks</h2>
+                    <p className="mt-1 text-xs text-gray-500">Enter course grades and scores for a student. This updates recommendations immediately.</p>
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <select value={academicForm.student_id} onChange={(e) => setAcademicForm((p) => ({ ...p, student_id: e.target.value }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                            <option value="">Select student</option>
+                            {(students as any[]).map((student) => (
+                                <option key={student.student_id} value={student.student_id}>
+                                    {student.student_id} - {student.user}
+                                </option>
+                            ))}
+                        </select>
+                        <select value={academicForm.course_id} onChange={(e) => setAcademicForm((p) => ({ ...p, course_id: e.target.value }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                            <option value="">Select course</option>
+                            {(courses as any[]).map((course) => (
+                                <option key={course.id} value={course.id}>
+                                    {course.code} - {course.name}
+                                </option>
+                            ))}
+                        </select>
+                        <input value={academicForm.assignment_score} onChange={(e) => setAcademicForm((p) => ({ ...p, assignment_score: e.target.value }))} type="number" placeholder="Assignment score" className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+                        <input value={academicForm.exam_score} onChange={(e) => setAcademicForm((p) => ({ ...p, exam_score: e.target.value }))} type="number" placeholder="Exam score" className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+                        <input value={academicForm.attendance_score} onChange={(e) => setAcademicForm((p) => ({ ...p, attendance_score: e.target.value }))} type="number" placeholder="Attendance score" className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+                        <select value={academicForm.grade} onChange={(e) => setAcademicForm((p) => ({ ...p, grade: e.target.value }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                            {["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "F"].map((grade) => (
+                                <option key={grade} value={grade}>
+                                    {grade}
+                                </option>
+                            ))}
+                        </select>
+                        <input value={academicForm.semester} onChange={(e) => setAcademicForm((p) => ({ ...p, semester: e.target.value }))} type="text" placeholder="Semester" className="rounded-xl border border-gray-200 px-3 py-2 text-sm md:col-span-2" />
+                        <textarea value={academicForm.notes} onChange={(e) => setAcademicForm((p) => ({ ...p, notes: e.target.value }))} rows={3} placeholder="Optional notes" className="rounded-xl border border-gray-200 px-3 py-2 text-sm md:col-span-2" />
+                    </div>
+                    <button type="submit" className="mt-4 rounded-full bg-[#1e2a78] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#16205c]">
+                        Save Marks
+                    </button>
+                </form>
+
+                <form onSubmit={handleAttendanceSubmit} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                    <h2 className="text-base font-bold text-gray-900">Upload Attendance</h2>
+                    <p className="mt-1 text-xs text-gray-500">Attendance updates the risk score and performance analysis automatically.</p>
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <select value={attendanceForm.student_id} onChange={(e) => setAttendanceForm((p) => ({ ...p, student_id: e.target.value }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                            <option value="">Select student</option>
+                            {(students as any[]).map((student) => (
+                                <option key={student.student_id} value={student.student_id}>
+                                    {student.student_id} - {student.user}
+                                </option>
+                            ))}
+                        </select>
+                        <select value={attendanceForm.course_id} onChange={(e) => setAttendanceForm((p) => ({ ...p, course_id: e.target.value }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                            <option value="">Select course</option>
+                            {(courses as any[]).map((course) => (
+                                <option key={course.id} value={course.id}>
+                                    {course.code} - {course.name}
+                                </option>
+                            ))}
+                        </select>
+                        <input value={attendanceForm.date} onChange={(e) => setAttendanceForm((p) => ({ ...p, date: e.target.value }))} type="date" className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+                        <select value={attendanceForm.status} onChange={(e) => setAttendanceForm((p) => ({ ...p, status: e.target.value }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                            {["present", "absent", "late", "excused"].map((status) => (
+                                <option key={status} value={status}>
+                                    {status}
+                                </option>
+                            ))}
+                        </select>
+                        <textarea value={attendanceForm.notes} onChange={(e) => setAttendanceForm((p) => ({ ...p, notes: e.target.value }))} rows={3} placeholder="Attendance notes" className="rounded-xl border border-gray-200 px-3 py-2 text-sm md:col-span-2" />
+                    </div>
+                    <button type="submit" className="mt-4 rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600">
+                        Save Attendance
+                    </button>
+                </form>
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-4">
@@ -165,9 +321,9 @@ export default function ClassPerformance() {
                 </div>
             </div>
 
-            {toast && (
+            {exportToast && (
                 <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-gray-900 px-5 py-3.5 text-sm font-medium text-white shadow-lg">
-                    {toast}
+                    {exportToast}
                 </div>
             )}
         </div>
