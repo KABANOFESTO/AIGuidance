@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { BookOpen, Users, Award, AlertTriangle, RefreshCw, Minus, TrendingUp, TrendingDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useCurrentUserQuery, useGetAdminAnalyticsQuery } from "@/lib/redux/slices/AuthSlice";
+import { hasValidAccessToken } from "@/lib/auth/session";
 
 interface StatCard {
     icon: React.ReactNode;
@@ -71,7 +72,8 @@ function ModuleRow({ mod }: { mod: Module }) {
 }
 
 export default function LecturerDashboard() {
-    const { data: me } = useCurrentUserQuery(undefined, { skip: typeof window === "undefined" });
+    const hasAccessToken = hasValidAccessToken();
+    const { data: me } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
     const { data: analytics, refetch } = useGetAdminAnalyticsQuery(undefined);
     const stats: StatCard[] = useMemo(
         () => [

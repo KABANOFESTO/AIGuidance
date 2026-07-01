@@ -15,6 +15,7 @@ import {
     X,
 } from 'lucide-react';
 import { useCurrentUserQuery, useLogoutMutation } from "@/lib/redux/slices/AuthSlice";
+import { hasValidAccessToken } from "@/lib/auth/session";
 
 const studentItems = [
     { title: 'Overview', url: '/student/dashboard', icon: LayoutGrid, badge: 'Live' },
@@ -46,7 +47,7 @@ export default function Sidebar() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
-    const hasAccessToken = typeof window !== "undefined" && Boolean(localStorage.getItem("access"));
+    const hasAccessToken = hasValidAccessToken();
     const { data: user, isLoading } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
     const [logout] = useLogoutMutation();
 

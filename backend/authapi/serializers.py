@@ -11,7 +11,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "role", "is_active")
+    fields = ("username", "email", "password", "role")
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -19,7 +19,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data["email"],
             password=validated_data["password"],
             role=validated_data.get("role", "Student"),
-            is_active=validated_data.get("is_active", True),
+            is_active=False,
+            status="Inactive",
+            is_email_verified=False,
         )
         return user
 
@@ -40,6 +42,7 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
             password=password,
             role=validated_data["role"],
             is_active=validated_data.get("is_active", True),
+            is_email_verified=True,
         )
 
         user.temporary_password = password
@@ -49,7 +52,7 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email", "role", "status", "profile_picture", "is_active")
+        fields = ("id", "username", "email", "role", "status", "profile_picture", "is_active", "is_email_verified")
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):

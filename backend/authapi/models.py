@@ -22,6 +22,7 @@ class User(AbstractUser):
         ("Inactive", "Inactive"),
     )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="Active")
+    is_email_verified = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
@@ -72,6 +73,32 @@ class User(AbstractUser):
     def is_user_active(self):
         """Check if user is active (using status field as source of truth)"""
         return self.status == "Active"
+
+
+class UserSettings(models.Model):
+    THEME_CHOICES = (
+        ("Light", "Light"),
+        ("Dark", "Dark"),
+        ("System", "System"),
+    )
+
+    user = models.OneToOneField(
+        "authapi.User",
+        on_delete=models.CASCADE,
+        related_name="settings",
+    )
+    notification_email = models.BooleanField(default=True)
+    push_notifications = models.BooleanField(default=True)
+    weekly_digest = models.BooleanField(default=False)
+    security_alerts = models.BooleanField(default=True)
+    language = models.CharField(max_length=32, default="English (US)")
+    timezone = models.CharField(max_length=64, default="UTC+02:00 (Central Africa Time)")
+    theme = models.CharField(max_length=16, choices=THEME_CHOICES, default="Light")
+    two_factor_enabled = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.email} settings"
 
 
 class UserNotification(models.Model):

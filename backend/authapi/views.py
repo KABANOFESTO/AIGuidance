@@ -37,6 +37,29 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _build_frontend_url(path: str) -> str:
+    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+    return f"{frontend_url.rstrip('/')}/{path.lstrip('/')}"
+
+
+def _send_verification_email(user):
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    verify_link = _build_frontend_url(f"auth/verify-email/{uid}/{token}")
+
+    send_mail(
+        subject="Verify your AI Guidance account",
+        message=f"Hello {user.username},\n\n"
+        f"Thanks for signing up. Please verify your email to activate your account:\n\n"
+        f"{verify_link}\n\n"
+        f"If you did not create this account, you can ignore this email.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+    return verify_link
+
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
@@ -48,20 +71,63 @@ class RegisterView(generics.CreateAPIView):
                 user=user,
                 defaults={"student_id": f"STU-{user.id:05d}"},
             )
+        try:
+            verify_link = _send_verification_email(user)
+            email_sent = True
+        except Exception as exc:
+            email_sent = False
+            verify_link = None
+            logger.error(f"Failed to send verification email to {user.email}: {str(exc)}")
         log_action(
             self.request,
             "USER_CREATE",
             target_user=user,
-            additional_data={"registration_method": "self_registration"},
+            additional_data={
+                "registration_method": "self_registration",
+                "verification_email_sent": email_sent,
+            },
         )
         logger.info(f"New user self-registered: {user.email}")
+        self.verification_link = verify_link
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {
+                "message": "Account created. Please verify your email before logging in.",
+                "email": serializer.validated_data.get("email"),
+                "verification_required": True,
+            },
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
 
 
 class AdminUserCreateView(generics.CreateAPIView):
     serializer_class = AdminUserCreateSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
+        requested_role = request.data.get("role")
+        admin_exists = User.objects.filter(role="Admin").exists()
+        is_admin_user = request.user.is_authenticated and getattr(request.user, "role", None) == "Admin"
+        created_by = request.user.email if request.user.is_authenticated else "system-bootstrap"
+
+        if requested_role == "Admin" and admin_exists and not is_admin_user:
+            return Response(
+                {"detail": "Admin creation requires an existing admin account."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if requested_role != "Admin" and not is_admin_user:
+            return Response(
+                {"detail": "Only an admin account can create lecturer or student users."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -78,7 +144,7 @@ class AdminUserCreateView(generics.CreateAPIView):
             target_user=user,
             additional_data={
                 "registration_method": "admin_created",
-                "created_by": request.user.email,
+                "created_by": created_by,
                 "role": user.role,
                 "temporary_password_sent": True,
             },
@@ -153,6 +219,18 @@ class MyTokenObtainView(APIView):
         user = User.objects.filter(email=email).first()
 
         if user and user.check_password(password):
+            if not user.is_email_verified:
+                try:
+                    _send_verification_email(user)
+                except Exception as exc:
+                    logger.error(f"Failed to resend verification email to {user.email}: {str(exc)}")
+                return Response(
+                    {
+                        "error": "Please verify your email address before logging in.",
+                        "verification_required": True,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             if user.is_active:
                 refresh = RefreshToken.for_user(user)
 
@@ -169,6 +247,13 @@ class MyTokenObtainView(APIView):
                         "refresh": str(refresh),
                         "access": str(refresh.access_token),
                         "user": UserSerializer(user).data,
+                        "redirect_path": (
+                            "/admin/dashboard"
+                            if user.role == "Admin"
+                            else "/lecturer/dashboard"
+                            if user.role == "Lecturer"
+                            else "/student/dashboard"
+                        ),
                     },
                     status=status.HTTP_200_OK,
                 )
@@ -217,6 +302,80 @@ class LogoutView(APIView):
 
         log_action(request, "LOGOUT", target_user=request.user)
         return Response({"message": "Logged out successfully."}, status=status.HTTP_200_OK)
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, uidb64, token):
+        try:
+            user_id = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=user_id)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({"error": "Invalid verification link."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({"error": "Invalid or expired verification link."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.is_email_verified = True
+        user.status = "Active"
+        user.is_active = True
+        user.save(update_fields=["is_email_verified", "status", "is_active"])
+
+        if user.role == "Student":
+            StudentProfile.objects.get_or_create(
+                user=user,
+                defaults={"student_id": f"STU-{user.id:05d}"},
+            )
+
+        log_action(request, "EMAIL_VERIFIED", target_user=user)
+        return Response(
+            {
+                "message": "Email verified successfully.",
+                "redirect_path": (
+                    "/admin/dashboard"
+                    if user.role == "Admin"
+                    else "/lecturer/dashboard"
+                    if user.role == "Lecturer"
+                    else "/student/dashboard"
+                ),
+                "user": UserSerializer(user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ResendVerificationView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response(
+                {"message": "If that account exists, a verification email has been sent."},
+                status=status.HTTP_200_OK,
+            )
+
+        if user.is_email_verified:
+            return Response(
+                {"message": "Account is already verified."},
+                status=status.HTTP_200_OK,
+            )
+
+        try:
+            _send_verification_email(user)
+            log_action(request, "EMAIL_VERIFICATION_RESEND", target_user=user)
+        except Exception as exc:
+            logger.error(f"Failed to resend verification email to {user.email}: {str(exc)}")
+
+        return Response(
+            {"message": "If that account exists, a verification email has been sent."},
+            status=status.HTTP_200_OK,
+        )
 
 
 class AdminOnlyView(APIView):

@@ -1,80 +1,102 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useState } from 'react';
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Loader2, Mail, ShieldCheck, Sparkles, Unlock, ArrowRight } from "lucide-react";
+import { useCurrentUserQuery, useLoginMutation, useResendVerificationMutation } from "@/lib/redux/slices/AuthSlice";
+import { getDashboardPath } from "@/lib/auth/navigation";
+import { hasValidAccessToken } from "@/lib/auth/session";
 
 const benefits = [
-    'AI-driven course recommendations',
-    'Real-time performance tracking',
-    '24/7 chatbot academic advisor',
-    'Career path mapping & guidance',
+    "Personalized course guidance",
+    "Career path recommendations",
+    "Real-time academic analytics",
+    "Role-based dashboards for each user",
 ];
 
 export default function LoginPage() {
+    const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [message, setMessage] = useState<string | null>(null);
+    const [isResending, setIsResending] = useState(false);
+    const [login, { isLoading }] = useLoginMutation();
+    const [resendVerification] = useResendVerificationMutation();
+    const hasAccessToken = hasValidAccessToken();
+    const { data: currentUser } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    useEffect(() => {
+        if (currentUser?.role) {
+            router.replace(getDashboardPath(currentUser.role));
+        }
+    }, [currentUser, router]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // TODO: wire up real authentication
+        setMessage(null);
+
+        try {
+            const response = await login({ email, password }).unwrap();
+            if (typeof window !== "undefined") {
+                localStorage.setItem("access", response.access);
+                localStorage.setItem("refresh", response.refresh);
+            }
+            router.replace(response.redirect_path || getDashboardPath(response.user?.role));
+        } catch (error: any) {
+            const text = error?.data?.error || error?.data?.detail || "Unable to sign in right now.";
+            setMessage(text);
+            if (error?.data?.verification_required) {
+                setMessage("Your email address still needs to be verified. Check your inbox or resend the link below.");
+            }
+        }
+    };
+
+    const handleResend = async () => {
+        if (!email.trim()) {
+            setMessage("Enter the email address you used to sign up first.");
+            return;
+        }
+
+        setIsResending(true);
+        try {
+            await resendVerification({ email }).unwrap();
+            setMessage("If the account exists, a new verification email has been sent.");
+        } finally {
+            setIsResending(false);
+        }
     };
 
     return (
         <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
-
-            {/* Left Panel */}
             <div
                 className="relative hidden flex-col justify-between overflow-hidden px-10 py-10 lg:flex"
-                style={{
-                    background: 'linear-gradient(160deg, #1e3a8a 0%, #4338ca 55%, #7c3aed 100%)',
-                }}
+                style={{ background: "linear-gradient(160deg, #0f172a 0%, #1e2a78 55%, #7c3aed 100%)" }}
             >
-                {/* Back link */}
-                <Link
-                    href="/"
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-200 transition-colors hover:text-white"
-                >
-                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <path d="M15 18l-6-6 6-6" />
-                    </svg>
-                    Back to Home
-                </Link>
-
-                {/* Middle content */}
                 <div className="max-w-md">
                     <div className="flex items-center gap-3">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="5" y="9" width="14" height="10" rx="2" />
-                                <path d="M9 9V7a3 3 0 0 1 6 0v2" />
-                                <circle cx="9.5" cy="14" r="1" fill="white" />
-                                <circle cx="14.5" cy="14" r="1" fill="white" />
-                            </svg>
+                            <ShieldCheck className="h-6 w-6 text-sky-200" />
                         </div>
                         <div>
                             <p className="text-lg font-bold text-white">AIGuidance</p>
-                            <p className="text-xs font-medium text-slate-300">Student Guidance System</p>
+                            <p className="text-xs font-medium text-slate-300">AI Student Guidance System</p>
                         </div>
                     </div>
 
                     <h1 className="mt-10 text-4xl font-extrabold leading-tight text-white sm:text-[2.6rem]">
-                        Intelligent guidance
-                        <br />
-                        for every student
+                        A smarter way to guide every student
                     </h1>
-
                     <p className="mt-6 text-base leading-relaxed text-slate-200">
-                        Sign in to access personalised course recommendations, career guidance, and AI-powered academic support.
+                        Sign in to access your role-based dashboard, live notifications, recommendations, and academic support.
                     </p>
 
                     <ul className="mt-8 space-y-3">
                         {benefits.map((item) => (
                             <li key={item} className="flex items-center gap-3 text-sm text-slate-100">
                                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/90">
-                                    <svg width="11" height="11" fill="none" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                                        <path d="M20 6L9 17l-5-5" />
-                                    </svg>
+                                    <ArrowRight className="h-3 w-3 text-slate-900" />
                                 </span>
                                 {item}
                             </li>
@@ -82,104 +104,100 @@ export default function LoginPage() {
                     </ul>
                 </div>
 
-                {/* Footer */}
-                <p className="text-xs text-slate-300">&copy; 2024 AI Student Guidance System</p>
+                <p className="text-xs text-slate-300">&copy; 2026 AI Student Guidance System</p>
             </div>
 
-            {/* Right Panel */}
             <div className="flex items-center justify-center bg-slate-50 px-6 py-16 lg:px-16">
                 <div className="w-full max-w-md">
-
-                    {/* Mobile back link */}
-                    <Link
-                        href="/"
-                        className="mb-8 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800 lg:hidden"
-                    >
-                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                            <path d="M15 18l-6-6 6-6" />
-                        </svg>
+                    <Link href="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800">
+                        <ArrowRight className="h-4 w-4 rotate-180" />
                         Back to Home
                     </Link>
 
-                    <h2 className="text-3xl font-extrabold text-slate-900">Welcome back</h2>
-                    <p className="mt-2 text-sm text-slate-500">Sign in to your account to continue.</p>
-
-                    <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-
-                        {/* Email */}
-                        <div>
-                            <label htmlFor="email" className="text-sm font-semibold text-slate-700">
-                                Email Address
-                            </label>
-                            <div className="mt-1.5 flex items-center rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100">
-                                <svg width="16" height="16" className="mr-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                                </svg>
-                                <input
-                                    id="email"
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="your@university.edu"
-                                    className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
-                                    required
-                                />
+                    <div className="rounded-[28px] border border-gray-100 bg-white p-8 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+                        <div className="mb-6">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Secure access
                             </div>
+                            <h2 className="mt-4 text-3xl font-extrabold text-slate-900">Welcome back</h2>
+                            <p className="mt-2 text-sm text-slate-500">Log in with your email and password to continue.</p>
                         </div>
 
-                        {/* Password */}
-                        <div>
-                            <label htmlFor="password" className="text-sm font-semibold text-slate-700">
-                                Password
-                            </label>
-                            <div className="mt-1.5 flex items-center rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100">
-                                <svg width="16" height="16" className="mr-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" />
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                </svg>
-                                <input
-                                    id="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Enter your password"
-                                    className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                    onClick={() => setShowPassword((prev) => !prev)}
-                                    className="ml-3 text-slate-400 transition-colors hover:text-slate-600"
-                                >
-                                    {showPassword ? (
-                                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                                            <line x1="1" y1="1" x2="23" y2="23" />
-                                        </svg>
-                                    ) : (
-                                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                            <circle cx="12" cy="12" r="3" />
-                                        </svg>
-                                    )}
-                                </button>
+                        <form className="space-y-4" onSubmit={handleSubmit}>
+                            <div>
+                                <label htmlFor="email" className="text-sm font-semibold text-slate-700">Email Address</label>
+                                <div className="mt-1.5 flex items-center rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100">
+                                    <Mail className="mr-3 h-4 w-4 text-slate-400" />
+                                    <input
+                                        id="email"
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="your@university.edu"
+                                        className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
+                                        required
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Submit */}
-                        <button
-                            type="submit"
-                            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3.5 text-sm font-bold text-white shadow-md transition-transform hover:-translate-y-0.5"
-                        >
-                            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                                <rect x="3" y="11" width="18" height="11" rx="2" />
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                            </svg>
-                            Sign In to Dashboard
-                        </button>
-                    </form>
+                            <div>
+                                <label htmlFor="password" className="text-sm font-semibold text-slate-700">Password</label>
+                                <div className="mt-1.5 flex items-center rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100">
+                                    <Unlock className="mr-3 h-4 w-4 text-slate-400" />
+                                    <input
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="Enter your password"
+                                        className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((prev) => !prev)}
+                                        className="ml-3 text-slate-400 transition-colors hover:text-slate-600"
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {message && (
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                    {message}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1e2a78] to-[#5b21b6] px-4 py-3.5 text-sm font-bold text-white shadow-md transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                            >
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                                {isLoading ? "Signing in..." : "Sign in"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleResend}
+                                disabled={isResending}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                            >
+                                {isResending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                                Resend verification email
+                            </button>
+                        </form>
+
+                        <p className="mt-6 text-center text-sm text-slate-500">
+                            New here?{" "}
+                            <Link href="/auth/signup" className="font-semibold text-[#1e2a78] hover:underline">
+                                Create a student account
+                            </Link>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
