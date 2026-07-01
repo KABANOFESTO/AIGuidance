@@ -8,7 +8,7 @@ import { useVerifyEmailMutation } from "@/lib/redux/slices/AuthSlice";
 
 export default function VerifyEmailPage() {
     const router = useRouter();
-    const params = useParams<{ uidb64: string; token: string }>();
+    const params = useParams<{ uidb64: string; token: string }>() ?? { uidb64: "", token: "" };
     const [verifyEmail] = useVerifyEmailMutation();
     const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
     const [message, setMessage] = useState("Verifying your email address...");
@@ -28,7 +28,7 @@ export default function VerifyEmailPage() {
             }
         };
 
-        if (params?.uidb64 && params?.token) {
+        if (params.uidb64 && params.token) {
             run();
         }
     }, [params, router, verifyEmail]);

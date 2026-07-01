@@ -8,12 +8,16 @@ from rest_framework.response import Response
 from academics.models import AcademicRecord, AttendanceRecord, Course, CourseMaterial
 from academics.serializers import (
     AcademicRecordSerializer,
+    AcademicRecordCreateSerializer,
     AcademicSummarySerializer,
     AttendanceRecordSerializer,
+    AttendanceRecordCreateSerializer,
     CourseSerializer,
     CourseMaterialSerializer,
 )
+from academics.services import refresh_student_profile
 from authapi.permissions import IsAdmin, IsAdminOrLecturer, IsAdminOrStudentOrLecturer
+from recommendations.services import regenerate_student_recommendations
 from students.models import StudentProfile
 
 
@@ -107,6 +111,11 @@ class AcademicRecordListCreateView(generics.ListCreateAPIView):
     serializer_class = AcademicRecordSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrLecturer]
 
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AcademicRecordCreateSerializer
+        return AcademicRecordSerializer
+
     def get_queryset(self):
         queryset = super().get_queryset()
         student_id = self.request.query_params.get("student_id")
@@ -115,6 +124,11 @@ class AcademicRecordListCreateView(generics.ListCreateAPIView):
         elif self.request.user.role == "Student":
             queryset = queryset.filter(student__user=self.request.user)
         return queryset
+
+    def perform_create(self, serializer):
+        record = serializer.save()
+        refresh_student_profile(record.student)
+        regenerate_student_recommendations(record.student)
 
 
 class AttendanceRecordListCreateView(generics.ListCreateAPIView):
@@ -122,6 +136,11 @@ class AttendanceRecordListCreateView(generics.ListCreateAPIView):
     serializer_class = AttendanceRecordSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrLecturer]
 
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AttendanceRecordCreateSerializer
+        return AttendanceRecordSerializer
+
     def get_queryset(self):
         queryset = super().get_queryset()
         student_id = self.request.query_params.get("student_id")
@@ -130,6 +149,11 @@ class AttendanceRecordListCreateView(generics.ListCreateAPIView):
         elif self.request.user.role == "Student":
             queryset = queryset.filter(student__user=self.request.user)
         return queryset
+
+    def perform_create(self, serializer):
+        record = serializer.save()
+        refresh_student_profile(record.student)
+        regenerate_student_recommendations(record.student)
 
 
 class AcademicSummaryView(generics.GenericAPIView):

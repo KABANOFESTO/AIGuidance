@@ -19,6 +19,7 @@ import { hasValidAccessToken } from "@/lib/auth/session";
 
 const studentItems = [
     { title: 'Overview', url: '/student/dashboard', icon: LayoutGrid, badge: 'Live' },
+    { title: 'My Results', url: '/student/results', icon: Briefcase },
     { title: 'AI Chatbot', url: '/student/chatbot', icon: Briefcase, badge: 'AI' },
     { title: 'Course Recommendations', url: '/student/courses', icon: BookOpen },
     { title: 'Career Guide', url: '/student/career-guide', icon: Compass },
@@ -42,14 +43,19 @@ function ConfirmDialog({ open, onClose, onConfirm }: { open: boolean; onClose: (
 }
 
 export default function Sidebar() {
-    const pathname = usePathname();
+    const pathname = usePathname() ?? "";
     const router = useRouter();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
     const hasAccessToken = hasValidAccessToken();
     const { data: user, isLoading } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
     const [logout] = useLogoutMutation();
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (!mobileOpen) return;
@@ -72,6 +78,7 @@ export default function Sidebar() {
         .join('')
         .slice(0, 2)
         .toUpperCase() ?? 'U';
+    const showLoading = mounted && isLoading;
 
     const SidebarContent = () => (
         <div className="flex h-full flex-col bg-[#1e2a78]">
@@ -96,10 +103,10 @@ export default function Sidebar() {
             <div className="px-4 py-4">
                 <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#1e2a78]">
-                        {isLoading ? <span className="animate-pulse">..</span> : initials}
+                        {showLoading ? <span className="animate-pulse">..</span> : initials}
                     </div>
                     <div className="overflow-hidden">
-                        {isLoading ? (
+                        {showLoading ? (
                             <div className="space-y-1.5">
                                 <div className="h-3 w-28 animate-pulse rounded bg-white/10" />
                                 <div className="h-2.5 w-16 animate-pulse rounded bg-white/10" />

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, UserSettings
 from django.contrib.auth.password_validation import validate_password
 
 
@@ -11,7 +11,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-    fields = ("username", "email", "password", "role")
+        fields = ("username", "email", "password", "role")
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -50,17 +50,70 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    profile_picture_url = serializers.SerializerMethodField()
+    settings = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ("id", "username", "email", "role", "status", "profile_picture", "is_active", "is_email_verified")
+        fields = (
+            "id",
+            "username",
+            "email",
+            "role",
+            "status",
+            "profile_picture",
+            "profile_picture_url",
+            "is_active",
+            "is_email_verified",
+            "settings",
+        )
+
+    def get_profile_picture_url(self, obj):
+        request = self.context.get("request")
+        if not obj.profile_picture:
+            return None
+
+        url = obj.profile_picture.url
+        if request is not None:
+            return request.build_absolute_uri(url)
+        return url
+
+    def get_settings(self, obj):
+        settings_obj, _ = UserSettings.objects.get_or_create(user=obj)
+        return UserSettingsSerializer(settings_obj).data
+
+
+class UserSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserSettings
+        fields = (
+            "notification_email",
+            "push_notifications",
+            "weekly_digest",
+            "security_alerts",
+            "language",
+            "timezone",
+            "theme",
+            "two_factor_enabled",
+            "updated_at",
+        )
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(required=False)
     new_password = serializers.CharField(
         write_only=True, required=False, validators=[validate_password]
     )
     current_password = serializers.CharField(write_only=True, required=False)
     profile_picture = serializers.ImageField(required=False, allow_null=True)
+    notification_email = serializers.BooleanField(required=False)
+    push_notifications = serializers.BooleanField(required=False)
+    weekly_digest = serializers.BooleanField(required=False)
+    security_alerts = serializers.BooleanField(required=False)
+    language = serializers.CharField(required=False)
+    timezone = serializers.CharField(required=False)
+    theme = serializers.ChoiceField(choices=UserSettings.THEME_CHOICES, required=False)
+    two_factor_enabled = serializers.BooleanField(required=False)
 
     class Meta:
         model = User
@@ -70,6 +123,14 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             "new_password",
             "profile_picture",
             "is_active",
+            "notification_email",
+            "push_notifications",
+            "weekly_digest",
+            "security_alerts",
+            "language",
+            "timezone",
+            "theme",
+            "two_factor_enabled",
         ]
 
     def validate(self, data):
@@ -83,6 +144,8 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
+        settings_obj, _ = UserSettings.objects.get_or_create(user=instance)
+
         if "username" in validated_data:
             instance.username = validated_data["username"]
 
@@ -96,6 +159,21 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 
         if "is_active" in validated_data:
             instance.is_active = validated_data["is_active"]
+
+        for field in (
+            "notification_email",
+            "push_notifications",
+            "weekly_digest",
+            "security_alerts",
+            "language",
+            "timezone",
+            "theme",
+            "two_factor_enabled",
+        ):
+            if field in validated_data:
+                setattr(settings_obj, field, validated_data[field])
+
+        settings_obj.save()
 
         instance.save()
         return instance

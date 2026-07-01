@@ -19,6 +19,7 @@ import { hasValidAccessToken } from "@/lib/auth/session";
 
 const lecturerItems = [
     { title: 'Overview', url: '/lecturer/dashboard', icon: LayoutGrid },
+    { title: 'Upload Marks', url: '/lecturer/upload-marks', icon: Upload },
     { title: 'Course Materials', url: '/lecturer/course-materials', icon: Upload },
     { title: 'Class Performance', url: '/lecturer/class-performance', icon: BarChart2 },
     { title: 'Feedback', url: '/lecturer/feedback', icon: MessageSquare },
@@ -41,14 +42,19 @@ function ConfirmDialog({ open, onClose, onConfirm }: { open: boolean; onClose: (
 }
 
 export default function Sidebar() {
-    const pathname = usePathname();
+    const pathname = usePathname() ?? "";
     const router = useRouter();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
     const hasAccessToken = hasValidAccessToken();
     const { data: user, isLoading } = useCurrentUserQuery(undefined, { skip: !hasAccessToken });
     const [logout] = useLogoutMutation();
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (!mobileOpen) return;
@@ -71,6 +77,7 @@ export default function Sidebar() {
         .join('')
         .slice(0, 2)
         .toUpperCase() ?? 'U';
+    const showLoading = mounted && isLoading;
 
     const SidebarContent = () => (
         <div className="flex h-full flex-col" style={{ background: '#1a237e' }}>
@@ -95,10 +102,10 @@ export default function Sidebar() {
             <div className="px-4 py-4">
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: '#22c55e' }}>
-                        {isLoading ? <span className="animate-pulse">..</span> : initials}
+                        {showLoading ? <span className="animate-pulse">..</span> : initials}
                     </div>
                     <div className="overflow-hidden">
-                        {isLoading ? (
+                        {showLoading ? (
                             <div className="space-y-1.5">
                                 <div className="h-3 w-28 animate-pulse rounded bg-white/10" />
                                 <div className="h-2.5 w-16 animate-pulse rounded bg-white/10" />

@@ -7,6 +7,11 @@ from recommendations.views import (
     CourseRecommendationListView,
     PerformanceAnalysisGenerateView,
     PerformanceAnalysisListView,
+    AdminStudentAIRecomputeView,
+    AdminRecommendationModelTrainView,
+    AdminRecommendationModelStatusView,
+    AdminRecommendationModelHistoryView,
+    RecommendationRegenerateView,
 )
 
 urlpatterns = [
@@ -16,4 +21,9 @@ urlpatterns = [
     path("careers/generate/", CareerRecommendationGenerateView.as_view(), name="career-recommendation-generate"),
     path("performance/", PerformanceAnalysisListView.as_view(), name="performance-analysis-list"),
     path("performance/generate/", PerformanceAnalysisGenerateView.as_view(), name="performance-analysis-generate"),
+    path("regenerate/", RecommendationRegenerateView.as_view(), name="recommendation-regenerate"),
+    path("admin/recompute/", AdminStudentAIRecomputeView.as_view(), name="admin-student-ai-recompute"),
+    path("admin/train/", AdminRecommendationModelTrainView.as_view(), name="recommendation-model-train"),
+    path("admin/status/", AdminRecommendationModelStatusView.as_view(), name="recommendation-model-status"),
+    path("admin/history/", AdminRecommendationModelHistoryView.as_view(), name="recommendation-model-history"),
 ]
