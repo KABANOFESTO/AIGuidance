@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ import {
     Menu,
     X,
     Briefcase,
+    BookOpen,
 } from 'lucide-react';
 import { useCurrentUserQuery, useLogoutMutation } from "@/lib/redux/slices/AuthSlice";
 import { hasValidAccessToken } from "@/lib/auth/session";
@@ -21,6 +22,7 @@ const lecturerItems = [
     { title: 'Overview', url: '/lecturer/dashboard', icon: LayoutGrid },
     { title: 'Upload Marks', url: '/lecturer/upload-marks', icon: Upload },
     { title: 'Course Materials', url: '/lecturer/course-materials', icon: Upload },
+    { title: 'Courses', url: '/lecturer/courses', icon: BookOpen },
     { title: 'Class Performance', url: '/lecturer/class-performance', icon: BarChart2 },
     { title: 'Feedback', url: '/lecturer/feedback', icon: MessageSquare },
 ];

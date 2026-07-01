@@ -1,7 +1,7 @@
-from django.db import models
+﻿from django.db import models
+from django.conf import settings
 
 from students.models import StudentProfile
-from django.conf import settings
 
 
 class Course(models.Model):
@@ -16,6 +16,28 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+
+class CourseEnrollment(models.Model):
+    STATUS_CHOICES = [
+        ("enrolled", "Enrolled"),
+        ("completed", "Completed"),
+        ("dropped", "Dropped"),
+    ]
+
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name="course_enrollments")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="enrollments")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="enrolled")
+    notes = models.TextField(blank=True, default="")
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("student", "course")
+        ordering = ["-enrolled_at"]
+
+    def __str__(self):
+        return f"{self.student.student_id} -> {self.course.code} ({self.status})"
 
 
 class AcademicRecord(models.Model):

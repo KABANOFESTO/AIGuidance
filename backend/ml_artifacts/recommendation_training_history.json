@@ -1,0 +1,22 @@
+[
+  {
+    "trained_at": "2026-07-01T11:22:14.345462+00:00",
+    "version": "reco-v1",
+    "student_count": 1,
+    "course_count": 1,
+    "academic_record_count": 1,
+    "course_svd_explained_variance": null,
+    "performance_mae": null,
+    "performance_r2": null
+  },
+  {
+    "trained_at": "2026-07-01T11:18:07.960365+00:00",
+    "version": "reco-v1",
+    "student_count": 1,
+    "course_count": 1,
+    "academic_record_count": 1,
+    "course_svd_explained_variance": null,
+    "performance_mae": null,
+    "performance_r2": null
+  }
+]

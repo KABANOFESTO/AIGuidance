@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ const studentItems = [
     { title: 'My Results', url: '/student/results', icon: Briefcase },
     { title: 'AI Chatbot', url: '/student/chatbot', icon: Briefcase, badge: 'AI' },
     { title: 'Course Recommendations', url: '/student/courses', icon: BookOpen },
+    { title: 'Enroll Courses', url: '/student/enrollments', icon: BookOpen },
     { title: 'Career Guide', url: '/student/career-guide', icon: Compass },
     { title: 'Performance Analytics', url: '/student/analytics', icon: BarChart2 },
 ];

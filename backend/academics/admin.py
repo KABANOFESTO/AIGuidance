@@ -1,6 +1,6 @@
-from django.contrib import admin
+﻿from django.contrib import admin
 
-from .models import AcademicRecord, AttendanceRecord, Course, CourseMaterial
+from .models import AcademicRecord, AttendanceRecord, Course, CourseEnrollment, CourseMaterial
 
 
 @admin.register(Course)
@@ -8,6 +8,13 @@ class CourseAdmin(admin.ModelAdmin):
     list_display = ("code", "name", "department", "level", "credits", "is_active")
     list_filter = ("department", "level", "is_active")
     search_fields = ("code", "name", "description")
+
+
+@admin.register(CourseEnrollment)
+class CourseEnrollmentAdmin(admin.ModelAdmin):
+    list_display = ("student", "course", "status", "enrolled_at", "updated_at")
+    list_filter = ("status", "enrolled_at")
+    search_fields = ("student__student_id", "course__code", "course__name")
 
 
 @admin.register(AcademicRecord)
