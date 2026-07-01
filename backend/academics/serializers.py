@@ -1,6 +1,6 @@
-from rest_framework import serializers
+﻿from rest_framework import serializers
 
-from academics.models import AcademicRecord, AttendanceRecord, Course, CourseMaterial
+from academics.models import AcademicRecord, AttendanceRecord, Course, CourseEnrollment, CourseMaterial
 from students.models import StudentProfile
 
 
@@ -8,6 +8,68 @@ class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = "__all__"
+
+
+class CourseEnrollmentSerializer(serializers.ModelSerializer):
+    student = serializers.StringRelatedField(read_only=True)
+    course_detail = CourseSerializer(source="course", read_only=True)
+
+    class Meta:
+        model = CourseEnrollment
+        fields = "__all__"
+        read_only_fields = ("id", "student", "course_detail", "enrolled_at", "updated_at")
+
+
+class CourseEnrollmentCreateSerializer(serializers.ModelSerializer):
+    student_id = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    course_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = CourseEnrollment
+        fields = ("student_id", "course_id", "status", "notes")
+
+    def validate(self, attrs):
+        student_id = attrs.pop("student_id", "")
+        course_id = attrs.get("course_id")
+        request = self.context.get("request")
+
+        if student_id:
+            try:
+                student = StudentProfile.objects.select_related("user").get(student_id=student_id)
+            except StudentProfile.DoesNotExist as exc:
+                raise serializers.ValidationError({"student_id": "Student profile not found."}) from exc
+        elif request and request.user.is_authenticated and request.user.role == "Student":
+            student = StudentProfile.objects.select_related("user").filter(user=request.user).first()
+            if not student:
+                raise serializers.ValidationError({"student_id": "Student profile not found."})
+        else:
+            raise serializers.ValidationError({"student_id": "student_id is required."})
+
+        try:
+            course = Course.objects.get(pk=course_id)
+        except Course.DoesNotExist as exc:
+            raise serializers.ValidationError({"course_id": "Course not found."}) from exc
+
+        if not course.is_active:
+            raise serializers.ValidationError({"course_id": "This course is not active."})
+
+        attrs["student"] = student
+        attrs["course"] = course
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop("course_id", None)
+        student = validated_data.pop("student")
+        course = validated_data.pop("course")
+        enrollment, _ = CourseEnrollment.objects.update_or_create(
+            student=student,
+            course=course,
+            defaults={
+                "status": validated_data.get("status", "enrolled"),
+                "notes": validated_data.get("notes", ""),
+            },
+        )
+        return enrollment
 
 
 class CourseMaterialSerializer(serializers.ModelSerializer):

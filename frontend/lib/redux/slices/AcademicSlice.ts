@@ -1,4 +1,4 @@
-import { apiSlice } from "./ApiSlice";
+﻿import { apiSlice } from "./ApiSlice";
 
 const academicApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
@@ -17,6 +17,25 @@ const academicApi = apiSlice.injectEndpoints({
         deleteCourse: builder.mutation({
             query: (id) => ({ url: `academics/courses/${id}/`, method: "DELETE" }),
             invalidatesTags: ["Course"],
+        }),
+        getEnrollments: builder.query({
+            query: (studentId?: string) => ({
+                url: studentId ? `academics/enrollments/?student_id=${encodeURIComponent(studentId)}` : "academics/enrollments/",
+                method: "GET",
+            }),
+            providesTags: ["CourseEnrollment"],
+        }),
+        enrollInCourse: builder.mutation({
+            query: (data) => ({ url: "academics/enrollments/", method: "POST", body: data }),
+            invalidatesTags: ["CourseEnrollment", "CourseMaterial", "AcademicRecord", "StudentProfile"],
+        }),
+        updateEnrollment: builder.mutation({
+            query: ({ id, data }) => ({ url: `academics/enrollments/${id}/`, method: "PATCH", body: data }),
+            invalidatesTags: ["CourseEnrollment", "CourseMaterial", "AcademicRecord", "StudentProfile"],
+        }),
+        deleteEnrollment: builder.mutation({
+            query: (id) => ({ url: `academics/enrollments/${id}/`, method: "DELETE" }),
+            invalidatesTags: ["CourseEnrollment", "CourseMaterial", "AcademicRecord", "StudentProfile"],
         }),
         getAcademicRecords: builder.query({
             query: (studentId?: string) => ({
@@ -85,6 +104,10 @@ export const {
     useCreateCourseMutation,
     useUpdateCourseMutation,
     useDeleteCourseMutation,
+    useGetEnrollmentsQuery,
+    useEnrollInCourseMutation,
+    useUpdateEnrollmentMutation,
+    useDeleteEnrollmentMutation,
     useGetAcademicRecordsQuery,
     useCreateAcademicRecordMutation,
     useGetAttendanceRecordsQuery,

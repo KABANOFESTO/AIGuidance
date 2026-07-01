@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+﻿import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { clearStoredAuthTokens } from "@/lib/auth/session";
 import { toast } from "sonner";
 
@@ -45,6 +45,7 @@ export const apiSlice = createApi({
         "StudentProfile",
         "BehaviourLog",
         "Course",
+        "CourseEnrollment",
         "AcademicRecord",
         "AttendanceRecord",
         "CourseMaterial",
