@@ -13,7 +13,7 @@ class ChatConversationAdmin(admin.ModelAdmin):
 
 @admin.register(KnowledgeBase)
 class KnowledgeBaseAdmin(admin.ModelAdmin):
-    list_display = ("id", "question", "category", "priority", "is_active", "created_at")
-    list_filter = ("category", "priority", "is_active")
+    list_display = ("id", "question", "category", "priority", "is_pinned", "is_active", "created_at")
+    list_filter = ("category", "priority", "is_pinned", "is_active")
     search_fields = ("question", "answer", "category")
     readonly_fields = ("created_at", "updated_at")

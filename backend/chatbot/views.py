@@ -18,6 +18,7 @@ class ChatBotMessageView(generics.GenericAPIView):
             user=request.user,
             message=serializer.validated_data["message"],
             session_id=serializer.validated_data.get("session_id"),
+            response_mode=serializer.validated_data.get("response_mode", "medium"),
         )
         return Response(
             {
@@ -26,6 +27,10 @@ class ChatBotMessageView(generics.GenericAPIView):
                 "confidence": payload["confidence"],
                 "response": payload["response"],
                 "suggestions": payload["suggestions"],
+                "follow_ups": payload["follow_ups"],
+                "next_action": payload["next_action"],
+                "response_mode": payload["response_mode"],
+                "mode_label": payload["mode_label"],
                 "conversation_id": payload["conversation"].id,
             },
             status=status.HTTP_200_OK,

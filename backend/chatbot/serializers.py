@@ -31,5 +31,12 @@ class ChatConversationSerializer(serializers.ModelSerializer):
 
 
 class ChatRequestSerializer(serializers.Serializer):
+    RESPONSE_MODES = [
+        ("short", "Short"),
+        ("medium", "Medium"),
+        ("detailed", "Detailed"),
+    ]
+
     message = serializers.CharField()
     session_id = serializers.CharField(required=False, allow_blank=True)
+    response_mode = serializers.ChoiceField(choices=RESPONSE_MODES, required=False, default="medium")
